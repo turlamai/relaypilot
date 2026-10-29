@@ -38,7 +38,7 @@
 
 ## 获得帮助
 
-在 [GitHub Issues](https://github.com/turinglambdaai/relaypilot/issues) 反馈，中文或英文均可。提供版本、系统与架构、安装渠道、复现步骤、预期和实际结果。先用合成样本复现；不要附上密钥、授权文件、数据库、原始私密文档或完整日志。公开支持不承诺响应时限。
+在 [GitHub Issues](https://github.com/turlamai/relaypilot/issues) 反馈，中文或英文均可。提供版本、系统与架构、安装渠道、复现步骤、预期和实际结果。先用合成样本复现；不要附上密钥、授权文件、数据库、原始私密文档或完整日志。公开支持不承诺响应时限。
 
 ## 深入阅读
 
