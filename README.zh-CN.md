@@ -2,7 +2,7 @@
 
 RelayPilot 是统一网络配置与可解释路由的架构 Alpha。目前提供 Racket 源码 CLI 和受监督的回环引擎纵切；规划中的原生宿主尚不是已发布客户端。
 
-[![CI](https://github.com/turinglambdaai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turinglambdaai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
+[![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
 
 [English](README.md) · **中文** · 🌐 [relaypilot.jrtx.site](https://relaypilot.jrtx.site/)
 
@@ -65,7 +65,7 @@ canonical Xray JSON + SHA-256
 
 ## 构建与测试
 
-需要 Racket CS 9.x 和 [Rivet](https://github.com/turinglambdaai/rivet)：
+需要 Racket CS 9.x 和 [Rivet](https://github.com/turlamai/rivet)：
 
 ```bash
 raco pkg install --auto --no-docs rivet
