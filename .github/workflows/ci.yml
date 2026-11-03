@@ -9,8 +9,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Do not silently cancel or replace the quality result of a main commit.
+  # GitHub concurrency groups also coalesce pending runs, so use the unique
+  # run ID for non-PR events and retain PR number grouping only for PRs.
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   racket:
