@@ -3,6 +3,7 @@
 ## Use the product
 
 - [English user guide](USER-GUIDE.md) · [简体中文](USER-GUIDE.zh-CN.md): availability, installation, first use, data/recovery, network/privacy and support.
+- [Distribution](distribution.md): current source-only state, the gate before any binary ships, and the planned release shape.
 - [Platform maturity](../docs/platform-maturity.md)
 - [CLI contract](../docs/CLI-SPEC.md)
 - [Engine boundary](../docs/engines.md)
