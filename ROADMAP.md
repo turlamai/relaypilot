@@ -27,6 +27,7 @@
 - [ ] Connect/disconnect/status and a minimal connection/DecisionTrace inspector
 - [ ] Add the platform tunnel/service boundary without moving VPN semantics into Rivet
 - [ ] Import a real user-owned Surge profile subset and report unsupported fields
+- [ ] Reserve the update-mechanism slot for the first shipped host: an Ed25519-signed update feed aligned with the family UPDATE contract (canonical copy: `turlamai/taskly` `shared/spec/UPDATE.md`); no auto-updater exists today and none ships before this contract is adopted here
 
 ## M3 — Cross-platform proof
 
