@@ -123,4 +123,4 @@ relaypilot/
 
 ## 许可证
 
-Copyright © 2026 turinglambdaai。当前尚未授予开源许可证。未来分发第三方 engine 时将分别履行 notice 和源码提供义务。
+Copyright © 2026 turinglambdaai。当前尚未授予开源许可证，条款见 [LICENSE](LICENSE)。未来分发第三方 engine 时将分别履行 notice 和源码提供义务。
