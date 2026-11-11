@@ -111,6 +111,25 @@ pre-UI brief：在首个原生宿主（ROADMAP M2）开工前，先把品牌基�
 | 事件摘要列表 | 会话事件倒序，时间戳等宽；每行可展开到 DecisionTrace |
 | 设置行 | 与 taskly 同款：细线分隔行 + 控件右置 |
 
+## 平台映射与差异声明（预钉 · 宿主选定后升级为落点表）
+
+M2 首个宿主未定（macOS / Windows 优先，ROADMAP「preferably macOS or Windows」）。
+**统一层**（三平台必须一致，原型已锁定）：信息架构（7 屏边界）、连接/断开与校验流程、
+DecisionTrace 的步骤-策略-出口叙述顺序、trace ID/adapter/digest 事实字段、快捷键语义、
+语义色与层级词汇。**因地制宜层**（选定宿主后按平台惯例落地，不预画像素）：
+
+| 维度 | macOS | Windows | Linux |
+|---|---|---|---|
+| 修饰键 | ⌘ | Ctrl | Ctrl |
+| 命令入口 | 原生菜单栏 | 菜单栏/命令行内 | 菜单栏 |
+| 字体 | 系统栈 + PingFang SC | 系统栈 + Microsoft YaHei | 系统栈 + Noto Sans CJK |
+| 原生控件 | SwiftUI 控件 | WinUI 3 控件 | GTK4 控件 |
+
+**差异声明纪律**（taskly 漂移台账 D8 的教训）：任何宿主特例必须先写进本节
+（或未来宿主切片的 PRODUCT-SPEC）才能实现；未声明的宿主差异按违约处理。
+跨设备用户提示（可选）：连接状态摘要进入系统托盘/菜单栏由宿主惯例决定，语义保持
+「连接主视图是唯一真相源」。
+
 ## 原型（design/prototype/，2026-11-11 认领切片）
 
 四屏 × 亮暗，严格用上述 tokens 与组件词汇渲染，仅呈现已验证的后端能力：
