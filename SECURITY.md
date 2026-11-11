@@ -59,7 +59,7 @@ primitives.
   local verification download one official Xray release, checksum-pinned
   (see `docs/third-party.md`), solely to validate configuration and drive
   loopback sessions. The generated notice text that a future bundle must
-  ship lives in `THIRD_PARTY_NOTICES.txt`
+  ship lives in `THIRD_PARTY_NOTICES.md`
   (`racket scripts/third-party-notices.rkt`).
 - Release identity is checked, not auto-updated: `info.rkt`, `rivet.rktd`
   and `app/core/version.rkt` must agree (`scripts/check-release-version.sh`).

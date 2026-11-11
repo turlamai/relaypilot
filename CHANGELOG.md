@@ -39,7 +39,7 @@ is kept aligned across `rivet.rktd`, `info.rkt` and
   redaction; preconditioned typed `ConfigPatch`
 - Third-party notices/source-offer workflow
   (`scripts/third-party-notices.rkt`, `docs/third-party.md`,
-  `THIRD_PARTY_NOTICES.txt`) and CI checks for release identity and the
+  `THIRD_PARTY_NOTICES.md`) and CI checks for release identity and the
   notice pin
 
 [Unreleased]: https://github.com/turlamai/relaypilot/compare/aa58bad57af3c9c2d52499a89302bba62a15fb19...HEAD
