@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RelayPilot — 你的网络，每一台设备</title>
-    <meta name="description" content="RelayPilot — 一套可解释的网络，覆盖你的每一台设备。">
+    <title>RelayPilot — 可解释的路由决策 · 架构实验</title>
+    <meta name="description" content="RelayPilot 是本地优先的架构实验：源码 CLI、确定性 DecisionTrace 与受监督的回环引擎纵切；原生客户端尚未发布。">
     <link rel="canonical" href="https://relaypilot.jrtx.site/">
     <meta name="theme-color" content="#D97757">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="RelayPilot">
-    <meta property="og:title" content="RelayPilot — Your network. Every device.">
-    <meta property="og:description" content="RelayPilot — one understandable network across every device you own.">
+    <meta property="og:title" content="RelayPilot — explainable routing decisions · architecture experiment">
+    <meta property="og:description" content="A local-first architecture experiment: source CLI, deterministic DecisionTrace, and a supervised loopback engine slice. Native clients are not released.">
     <meta property="og:url" content="https://relaypilot.jrtx.site/">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="RelayPilot — Your network. Every device.">
-    <meta name="twitter:description" content="RelayPilot — one understandable network across every device you own.">
+    <meta name="twitter:title" content="RelayPilot — explainable routing decisions · architecture experiment">
+    <meta name="twitter:description" content="A local-first architecture experiment: source CLI, deterministic DecisionTrace, and a supervised loopback engine slice. Native clients are not released.">
 
     <!-- Theme pre-paint: apply before the stylesheet paints, no flash. -->
     <script>
@@ -79,14 +79,14 @@
         <section class="kit-hero" id="overview">
             <div class="kit-container">
                 <p class="status-pill"><span class="status-dot" aria-hidden="true"></span><span data-i18n="hero.status">架构 Alpha · 控制平面已交付</span></p>
-                <span class="kit-eyebrow" data-i18n="hero.eyebrow">LOCAL-FIRST 原生网络工具箱</span>
-                <h1><span data-i18n="hero.h1a">你的网络，</span> <span class="kit-accent-word" data-i18n="hero.h1b">每一台设备。</span></h1>
+                <span class="kit-eyebrow" data-i18n="hero.eyebrow">LOCAL-FIRST 网络工具箱</span>
+                <h1><span data-i18n="hero.h1a">每一个路由决定，</span> <span class="kit-accent-word" data-i18n="hero.h1b">都有迹可循。</span></h1>
                 <p class="kit-lead" data-i18n="hero.lead">架构 Alpha：源码 CLI、可解释路由与受监督回环引擎纵切。原生平台客户端尚未发布。</p>
                 <div class="kit-btn-row">
                     <div class="install-block">
-                        <span class="install-label" data-i18n="install.label">从源码安装</span>
-                        <pre class="install-cmd"><code>raco pkg install relaypilot</code></pre>
-                        <span class="install-note" data-i18n="install.note">架构 Alpha 以源码分发；当前没有公开发行附件。</span>
+                        <span class="install-label" data-i18n="install.label">从源码构建</span>
+                        <pre class="install-cmd"><code>git clone https://github.com/turlamai/relaypilot</code></pre>
+                        <span class="install-note" data-i18n="install.note">无安装包与 Release 附件；克隆并自行构建是唯一获取路径。</span>
                     </div>
                     <a class="kit-btn kit-btn--secondary" href="https://github.com/turlamai/relaypilot" data-i18n="hero.cta-build">关注开发进展</a>
                     <a class="kit-btn kit-btn--ghost" href="#trace"><span data-i18n="hero.cta-trace">看它如何决策 →</span><span class="kit-btn-arrow">›</span></a>
@@ -97,16 +97,17 @@
                     <div class="code-window">
                         <div class="window-header">
                             <div class="window-controls" aria-hidden="true"><span class="traffic-light close"></span><span class="traffic-light minimize"></span><span class="traffic-light maximize"></span></div>
-                            <div class="window-title">DecisionTrace · connection 7F3A9C10</div>
+                            <div class="window-title">DecisionTrace · trace 7F3A9C10</div>
                         </div>
                         <div class="trace-body" id="trace">
-                            <div class="trace-line"><span class="trace-label" data-i18n="trace.request">请求</span><span class="trace-main">api.openai.com:443</span><span class="trace-note" data-i18n="trace.request-note">浏览器 · TCP</span></div>
+                            <div class="trace-line"><span class="trace-label" data-i18n="trace.request">请求</span><span class="trace-main">api.openai.com:443</span><span class="trace-note" data-i18n="trace.request-note">本地求值 · TCP</span></div>
                             <div class="trace-line"><span class="trace-label" data-i18n="trace.rule">规则 1 · profile:daily-network</span><span class="trace-main">DOMAIN, api.openai.com</span><span class="trace-note ok" data-i18n="trace.rule-note">精确匹配</span></div>
-                            <div class="trace-line"><span class="trace-label" data-i18n="trace.policy">策略</span><span class="trace-main">AI → US Reality 01</span><span class="trace-note" data-i18n="trace.policy-note">策略组显式选择</span></div>
+                            <div class="trace-line"><span class="trace-label" data-i18n="trace.policy">策略</span><span class="trace-main">AI Services → US Reality 01</span><span class="trace-note" data-i18n="trace.policy-note">策略组显式选择</span></div>
                             <div class="trace-line"><span class="trace-label" data-i18n="trace.engine">ENGINE 边界</span><span class="trace-main">Xray · VLESS REALITY</span><span class="trace-note" data-i18n="trace.engine-note">保留规则源映射</span></div>
                             <div class="trace-verdict">✓ <span data-i18n="trace.verdict">路由已决定</span></div>
                         </div>
                     </div>
+                    <p class="trace-caption" data-i18n="trace.caption">DecisionTrace 输出示意 —— CLI/JSON 工件的概念渲染，非产品界面；示例中的出站与凭据均为仓库合成数据。</p>
                 </div>
             </div>
         </section>
@@ -115,7 +116,7 @@
         <section class="kit-section kit-section--alt" id="visual-showcase" aria-label="Product workflow diagram">
             <div class="vs-wrap">
                 <div class="vs-intro">
-                    <span class="vs-label">PRODUCT IN CONTEXT · 产品如何工作</span>
+                    <span class="vs-label">ARCHITECTURE · 架构如何工作</span>
                     <h2 data-i18n="vs.title">从网络配置到可检查的本地状态。</h2>
                     <p class="vs-lead" data-i18n="vs.lead">当前仍是架构 Alpha；示意不代表正式 VPN、移动客户端或生产级隧道已经交付。</p>
                 </div>
@@ -147,7 +148,7 @@
         <!-- Principles -->
         <section class="kit-section" id="principles">
             <div class="kit-container">
-                <span class="kit-kicker" data-i18n="principles.kicker">不是另一个按 engine 数据模型做出来的界面</span>
+                <span class="kit-kicker" data-i18n="principles.kicker">设计契约第一条：不做又一个 Xray GUI</span>
                 <h2 class="kit-h2"><span data-i18n="principles.title-a">RelayPilot 做出决定，</span> <span class="kit-accent-word" data-i18n="principles.title-b">Engine 负责执行。</span></h2>
                 <div class="kit-grid kit-grid--3" style="margin-top: 44px;">
                     <div class="kit-card">
@@ -162,8 +163,8 @@
                     </div>
                     <div class="kit-card">
                         <span class="card-num">03</span>
-                        <h3 data-i18n="principles.f3.title">使用你的存储</h3>
-                        <p data-i18n="principles.f3.body">Apple 优先 iCloud Drive，并支持本地文件夹与 WebDAV；不强制账号或云。</p>
+                        <h3 data-i18n="principles.f3.title">存储在你自己的文件夹</h3>
+                        <p data-i18n="principles.f3.body">本地文件夹是已交付的存储边界；iCloud Drive、WebDAV 等 provider 同步在 profile 模型之外，尚未交付。</p>
                     </div>
                 </div>
             </div>
@@ -172,8 +173,8 @@
         <!-- Platforms -->
         <section class="kit-section kit-section--alt" id="platforms">
             <div class="kit-container">
-                <span class="kit-kicker" data-i18n="platforms.kicker">各平台真原生</span>
-                <h2 class="kit-h2"><span data-i18n="platforms.title-a">一致的产品。</span> <span class="kit-accent-word" data-i18n="platforms.title-b">第一方原生界面。</span></h2>
+                <span class="kit-kicker" data-i18n="platforms.kicker">平台目标 · 从 M2 开始</span>
+                <h2 class="kit-h2"><span data-i18n="platforms.title-a">一套设计契约。</span> <span class="kit-accent-word" data-i18n="platforms.title-b">原生界面是下一步。</span></h2>
                 <div class="kit-grid kit-grid--3" style="margin-top: 44px;">
                     <div class="kit-card platform-card"><h3>macOS</h3><p class="platform-format">SwiftUI</p></div>
                     <div class="kit-card platform-card"><h3>Windows</h3><p class="platform-format">WinUI 3</p></div>
@@ -182,7 +183,7 @@
                     <div class="kit-card platform-card"><h3>Android</h3><p class="platform-format">Compose</p></div>
                     <div class="kit-card platform-card"><h3>Apple TV</h3><p class="platform-format">SwiftUI</p></div>
                 </div>
-                <p class="callout" data-i18n="platforms.callout">这是平台目标，不是已支持声明；native host 与 tunnel path 尚未完成。</p>
+                <p class="callout" data-i18n="platforms.callout">这是平台目标，不是已支持声明；首个原生宿主（ROADMAP M2）尚未开工，tunnel path 亦未实现。</p>
             </div>
         </section>
 
@@ -190,7 +191,7 @@
         <section class="kit-section" id="status">
             <div class="kit-container">
                 <span class="kit-kicker" data-i18n="status.kicker">架构 Alpha</span>
-                <h2 class="kit-h2"><span data-i18n="status.title-a">控制平面已落地。</span> <span class="kit-accent-word" data-i18n="status.title-b">下一步是真实 VPN 路径。</span></h2>
+                <h2 class="kit-h2"><span data-i18n="status.title-a">控制平面已落地。</span> <span class="kit-accent-word" data-i18n="status.title-b">下一步：首个可用的桌面路径。</span></h2>
                 <p class="kit-lead" data-i18n="status.lead">Profile 校验、Surge 规则导入、确定性求值、策略选择、DecisionTrace、Xray VLESS/REALITY 编译、本地 storage、诊断脱敏、typed patch 和测试都已进入仓库。</p>
                 <div class="kit-btn-row" style="margin-top: 30px;">
                     <a class="kit-btn kit-btn--primary" href="https://github.com/turlamai/relaypilot/blob/main/ROADMAP.md" data-i18n="status.cta-roadmap">查看诚实路线图 →</a>
@@ -240,7 +241,7 @@
                         </svg>
                         <span>RelayPilot</span>
                     </a>
-                    <p class="kit-footer-tagline" data-i18n="footer.tagline">Local-first · 原生 · 可解释</p>
+                    <p class="kit-footer-tagline" data-i18n="footer.tagline">Local-first · 可解释 · 架构 Alpha</p>
                 </div>
                 <div>
                     <h4 data-i18n="footer.product">产品</h4>
@@ -269,7 +270,7 @@
                 </div>
             </div>
             <div class="kit-footer-bottom">
-                <span>© 2026 TuringLambda AI · <span data-i18n="footer.tagline">Local-first · 原生 · 可解释</span></span>
+                <span>© 2026 TuringLambda AI · <span data-i18n="footer.tagline">Local-first · 可解释 · 架构 Alpha</span></span>
                 <span class="kit-mono">site-kit v1.0.2</span>
             </div>
         </div>
@@ -283,17 +284,17 @@
     "nav.status": "状态",
     "nav.github": "GitHub",
     "hero.status": "架构 Alpha · 控制平面已交付",
-    "hero.eyebrow": "LOCAL-FIRST 原生网络工具箱",
-    "hero.h1a": "你的网络，",
-    "hero.h1b": "每一台设备。",
+    "hero.eyebrow": "LOCAL-FIRST 网络工具箱",
+    "hero.h1a": "每一个路由决定，",
+    "hero.h1b": "都有迹可循。",
     "hero.lead": "架构 Alpha：源码 CLI、可解释路由与受监督回环引擎纵切。原生平台客户端尚未发布。",
     "hero.availability": "免费架构实验，不销售、不订阅、不接商业激活；现行源码许可限制仍然有效。",
-    "install.label": "从源码安装",
-    "install.note": "架构 Alpha 以源码分发；当前没有公开发行附件。",
+    "install.label": "从源码构建",
+    "install.note": "无安装包与 Release 附件；克隆并自行构建是唯一获取路径。",
     "hero.cta-build": "关注开发进展",
     "hero.cta-trace": "看它如何决策 →",
     "trace.request": "请求",
-    "trace.request-note": "浏览器 · TCP",
+    "trace.request-note": "本地求值 · TCP",
     "trace.rule": "规则 1 · profile:daily-network",
     "trace.rule-note": "精确匹配",
     "trace.policy": "策略",
@@ -301,6 +302,7 @@
     "trace.engine": "ENGINE 边界",
     "trace.engine-note": "保留规则源映射",
     "trace.verdict": "路由已决定",
+    "trace.caption": "DecisionTrace 输出示意 —— CLI/JSON 工件的概念渲染，非产品界面；示例中的出站与凭据均为仓库合成数据。",
     "vs.title": "从网络配置到可检查的本地状态。",
     "vs.lead": "当前仍是架构 Alpha；示意不代表正式 VPN、移动客户端或生产级隧道已经交付。",
     "vs.s1t": "描述配置",
@@ -310,22 +312,22 @@
     "vs.s3t": "明确边界",
     "vs.s3b": "不宣传未交付能力",
     "vs.caption": "概念工作流示意，非软件截图。实际能力以已发布版本为准。",
-    "principles.kicker": "不是另一个按 engine 数据模型做出来的界面",
+    "principles.kicker": "设计契约第一条：不做又一个 Xray GUI",
     "principles.title-a": "RelayPilot 做出决定，",
     "principles.title-b": "Engine 负责执行。",
     "principles.f1.title": "一套 canonical profile",
     "principles.f1.body": "Profile、规则、策略组、DNS 意图与同步不绑定任何 proxy engine。",
     "principles.f2.title": "不依赖 AI 也能解释",
     "principles.f2.body": "每条路由都有确定性 trace；AI 只接收有边界、已脱敏的诊断包。",
-    "principles.f3.title": "使用你的存储",
-    "principles.f3.body": "Apple 优先 iCloud Drive，并支持本地文件夹与 WebDAV；不强制账号或云。",
-    "platforms.kicker": "各平台真原生",
-    "platforms.title-a": "一致的产品。",
-    "platforms.title-b": "第一方原生界面。",
-    "platforms.callout": "这是平台目标，不是已支持声明；native host 与 tunnel path 尚未完成。",
+    "principles.f3.title": "存储在你自己的文件夹",
+    "principles.f3.body": "本地文件夹是已交付的存储边界；iCloud Drive、WebDAV 等 provider 同步在 profile 模型之外，尚未交付。",
+    "platforms.kicker": "平台目标 · 从 M2 开始",
+    "platforms.title-a": "一套设计契约。",
+    "platforms.title-b": "原生界面是下一步。",
+    "platforms.callout": "这是平台目标，不是已支持声明；首个原生宿主（ROADMAP M2）尚未开工，tunnel path 亦未实现。",
     "status.kicker": "架构 Alpha",
     "status.title-a": "控制平面已落地。",
-    "status.title-b": "下一步是真实 VPN 路径。",
+    "status.title-b": "下一步：首个可用的桌面路径。",
     "status.lead": "Profile 校验、Surge 规则导入、确定性求值、策略选择、DecisionTrace、Xray VLESS/REALITY 编译、本地 storage、诊断脱敏、typed patch 和测试都已进入仓库。",
     "status.cta-roadmap": "查看诚实路线图 →",
     "status.cta-source": "查看源码",
@@ -337,7 +339,7 @@
     "start.s3": "测试保留在可丢弃的回环环境，不导入真实订阅，也不将其用作系统网络通道。",
     "start.limits": "当前没有公开发行附件。平台成熟度与实际网络接管仍需明确验收；规划平台不等于已支持产品。",
     "start.help": "反馈与帮助",
-    "footer.tagline": "Local-first · 原生 · 可解释",
+    "footer.tagline": "Local-first · 可解释 · 架构 Alpha",
     "footer.product": "产品",
     "footer.family": "家族",
     "footer.portal": "全部产品",
@@ -353,16 +355,16 @@
     "nav.github": "GitHub",
     "hero.status": "Architecture alpha · control plane shipped",
     "hero.eyebrow": "Local-first network toolbox",
-    "hero.h1a": "Your network.",
-    "hero.h1b": "Every device.",
+    "hero.h1a": "Every routing decision,",
+    "hero.h1b": "explained.",
     "hero.lead": "Architecture alpha: a source CLI, explainable routing and a supervised loopback engine slice. Native platform clients are not released.",
     "hero.availability": "Free architecture experiment with no sale, subscription or commercial activation. Existing source licence restrictions remain in force.",
-    "install.label": "Install from source",
-    "install.note": "The architecture alpha ships as source; no public release assets exist.",
+    "install.label": "Build from source",
+    "install.note": "No installers or release assets exist. Cloning and building from source is the only acquisition path.",
     "hero.cta-build": "Follow the build",
     "hero.cta-trace": "See how it decides →",
     "trace.request": "REQUEST",
-    "trace.request-note": "Browser · TCP",
+    "trace.request-note": "Local evaluation · TCP",
     "trace.rule": "RULE 1 · profile:daily-network",
     "trace.rule-note": "Matched exactly",
     "trace.policy": "POLICY",
@@ -370,6 +372,7 @@
     "trace.engine": "ENGINE BOUNDARY",
     "trace.engine-note": "Rule source map preserved",
     "trace.verdict": "ROUTE DECIDED",
+    "trace.caption": "DecisionTrace output concept — a rendering of the CLI/JSON artifact, not a product UI. Outbounds and credentials in the example are synthetic repo data.",
     "vs.title": "From network profiles to inspectable local state.",
     "vs.lead": "Architecture alpha, not a shipped VPN, mobile client or production tunnel.",
     "vs.s1t": "Describe",
@@ -379,22 +382,22 @@
     "vs.s3t": "Limit",
     "vs.s3b": "Do not claim unshipped features",
     "vs.caption": "Conceptual workflow, not a UI screenshot. Refer to released builds for capabilities.",
-    "principles.kicker": "Not another engine-shaped UI",
+    "principles.kicker": "Design contract no. 1: not another Xray GUI",
     "principles.title-a": "RelayPilot owns the decision,",
     "principles.title-b": "the engine executes it.",
     "principles.f1.title": "One canonical profile",
     "principles.f1.body": "Profiles, rules, policy groups, DNS intent, and sync stay independent from any proxy engine.",
     "principles.f2.title": "Explain before AI",
     "principles.f2.body": "Every route has a deterministic trace. AI receives a bounded, redacted diagnostic bundle — not a log dump.",
-    "principles.f3.title": "Your storage",
-    "principles.f3.body": "iCloud Drive first on Apple, plus local folders and WebDAV. No mandatory RelayPilot account or cloud.",
-    "platforms.kicker": "Native by platform",
-    "platforms.title-a": "Consistent product.",
-    "platforms.title-b": "First-party interfaces.",
-    "platforms.callout": "Platform targets, not shipping claims. Native hosts and tunnel paths are not implemented yet.",
+    "principles.f3.title": "Storage in your own folders",
+    "principles.f3.body": "Local folders are the delivered storage boundary. Provider sync (iCloud Drive, WebDAV) stays outside the profile model — not shipped yet.",
+    "platforms.kicker": "Platform targets · starting from M2",
+    "platforms.title-a": "One design contract.",
+    "platforms.title-b": "Native interfaces are next.",
+    "platforms.callout": "Platform targets, not shipping claims. The first native host (ROADMAP M2) has not started, and tunnel paths are not implemented.",
     "status.kicker": "Architecture alpha",
     "status.title-a": "The control plane is real.",
-    "status.title-b": "The VPN app is next.",
+    "status.title-b": "Next: the first usable desktop path.",
     "status.lead": "Profile validation, Surge rule import, deterministic evaluation, policy selection, DecisionTrace, Xray VLESS/REALITY compilation, local storage, diagnostic redaction, typed patches, and tests are in the repository today.",
     "status.cta-roadmap": "Read the honest roadmap →",
     "status.cta-source": "View source",
@@ -406,7 +409,7 @@
     "start.s3": "Keep tests on a disposable loopback setup; do not import real subscriptions or make it your system network path.",
     "start.limits": "No public release assets currently exist. Platform maturity and actual network takeover remain explicit gates; do not interpret planned platforms as supported products.",
     "start.help": "Get help",
-    "footer.tagline": "Local-first · Native · Explainable",
+    "footer.tagline": "Local-first · Explainable · Architecture alpha",
     "footer.product": "Product",
     "footer.family": "Family",
     "footer.portal": "All products",
