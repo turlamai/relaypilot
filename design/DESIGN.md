@@ -96,3 +96,24 @@ pre-UI brief：在首个原生宿主（ROADMAP M2）开工前，先把品牌基�
    ok/warn/danger 是独立的语义色，不与 accent 混用挪用。
 6. **破坏性防错**：连接/断开/应用 patch/删除 Profile 需显式确认与可回滚路径；
    AI 永远停在预览，apply 是用户的显式动作。
+
+## 组件词汇（预钉 · M2 宿主开工时与原生实现核对固化）
+
+| 组件 | 规范 |
+|---|---|
+| 会话状态徽标 | 胶囊形：`未运行`(muted) / `校验中…`(warn, 转圈) / `运行中`(ok) / `已停止`(muted)——文字必须与徽标色一致语义 |
+| 连接主按钮 | 36px 高、radius 8、accent 底白字（停止时变为 danger 描边「断开」）；状态未就绪时禁用 |
+| Trace 行 | 等宽栈单行：步骤序号 + 动作 + 对象；命中/跳过以 ok/mute 左侧竖线区分；点击展开规则原文引用 |
+| Trace ID 条 | 等宽、可复制；trace ID + adapter 版本 + digest 三事实常驻（不变式 2） |
+| Profile 卡 | 卡片 12px 圆角：名称 + 校验徽标（已验证 ok / 待验证 warn / 不可用 danger）+ 引擎目标 + 入口数；点击进详情 |
+| 导入预览表 | 双栏 diff：支持字段 vs 不支持字段（warn 徽标逐条列出）；导入按钮在确认前禁用 |
+| 警告条 | surface 底 + warn 左边线；文案含可执行下一步 |
+| 事件摘要列表 | 会话事件倒序，时间戳等宽；每行可展开到 DecisionTrace |
+| 设置行 | 与 taskly 同款：细线分隔行 + 控件右置 |
+
+## 原型（design/prototype/，2026-11-11 认领切片）
+
+四屏 × 亮暗，严格用上述 tokens 与组件词汇渲染，仅呈现已验证的后端能力：
+① `connect.html` 连接主视图（会话生命周期 + 事件摘要）② `trace.html` DecisionTrace
+检查器（规则链 → 策略 → 出口 → trace ID）③ `profiles.html` Profile 库 + Surge 导入
+不支持字段报告 ④ `settings.html` 设置。HIG 自检通过后本契约升级为完整契约。

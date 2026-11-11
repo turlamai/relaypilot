@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelayPilot — 设置原型</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .setwin {
+    width: 460px; border-radius: 12px; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    box-shadow: 0 1px 2px rgba(32,27,22,.10), 0 12px 32px rgba(32,27,22,.16), 0 32px 80px rgba(32,27,22,.20);
+    transition: background .12s ease, color .12s ease;
+  }
+  .sbody { padding: 6px 20px 16px; }
+  .frow {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border-bottom: 1px solid var(--line); padding: 12px 0;
+  }
+  .frow:last-child { border-bottom: none; }
+  .flabel { font-size: 13px; }
+  .fnote { font-size: 11.5px; color: var(--mute); margin-top: 2px; }
+  .select {
+    height: 30px; min-width: 170px; padding: 0 10px; border: 1px solid var(--input, #8A8177);
+    border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 13px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .switch { width: 38px; height: 22px; border-radius: 99px; background: var(--line); position: relative; transition: background .12s ease; flex: none; }
+  .switch::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: left .12s ease; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 18px; }
+  .dir { font-family: var(--mono); font-size: 11.5px; color: var(--mute); }
+</style>
+</head>
+<body>
+  <div class="setwin" id="app">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="t">RelayPilot 设置</div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="themeBtn" title="切换亮暗主题">◐</button>
+    </div>
+    <div class="sbody">
+      <div class="frow">
+        <span><span class="flabel">界面语言</span><div class="fnote">英文默认 + 完整中文（文档政策同步）</div></span>
+        <span class="select">中文 <span style="color:var(--faint)">▾</span></span>
+      </div>
+      <div class="frow">
+        <span><span class="flabel">主题</span><div class="fnote">亮暗成对，跟随系统</div></span>
+        <span class="select">跟随系统 <span style="color:var(--faint)">▾</span></span>
+      </div>
+      <div class="frow">
+        <span><span class="flabel">本地目录同步</span><div class="fnote">provider 中立 · 用户自有目录边界</div></span>
+        <span class="dir">~/Notes/relay-profiles</span>
+      </div>
+      <div class="frow">
+        <span><span class="flabel">诊断导出脱敏</span><div class="fnote">DiagnosticBundle 导出前移除主机名与地址</div></span>
+        <span class="switch on"></span>
+      </div>
+      <div class="frow">
+        <span><span class="flabel">AI patch 上限</span><div class="fnote">AI 永远停在预览；apply 是显式动作</div></span>
+        <span class="select">每次 1 个 patch <span style="color:var(--faint)">▾</span></span>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      document.getElementById('app').classList.toggle('dark');
+    });
+  </script>
+</body>
+</html>

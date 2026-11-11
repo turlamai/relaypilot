@@ -1,0 +1,62 @@
+/* ==== RelayPilot 原型共享壳 — tokens 与窗壳，值严格来自 design/DESIGN.md ==== */
+:root {
+  --bg: #FAF8F5; --surface: #FFFFFF; --raised: #F3EFE9;
+  --line: rgba(32,27,22,.12);
+  --ink: #201B16; --mute: #5D554C; --faint: #8A8177;
+  --accent: #D97757; --accent-soft: rgba(217,119,87,.12);
+  --ok: #1F7A45; --warn: #B45309; --danger: #B3261E;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", monospace;
+}
+.dark {
+  --bg: #16120F; --surface: #1F1A16; --raised: #262019;
+  --line: rgba(241,236,229,.13);
+  --ink: #F1ECE5; --mute: #A89F93; --faint: #7A7166;
+  --accent: #E08A6B; --accent-soft: rgba(224,138,107,.14);
+  --ok: #7EE2A8; --warn: #F59E0B; --danger: #FF5F57;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh; display: grid; place-items: center; padding: 36px 24px;
+  background: radial-gradient(1100px 760px at 18% 0%, #EFEBE5, #E2DDD5 60%, #D6D1C8);
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased; color: var(--ink);
+}
+.mono { font-family: var(--mono); }
+.window {
+  position: relative;
+  width: 1200px; max-width: 100%; height: 780px; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--ink);
+  box-shadow: 0 1px 2px rgba(32,27,22,.10), 0 12px 32px rgba(32,27,22,.16), 0 32px 80px rgba(32,27,22,.20);
+  transition: background .12s ease, color .12s ease;
+}
+.titlebar {
+  height: 44px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+  background: var(--raised); border-bottom: 1px solid var(--line);
+}
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; }
+.lights i:nth-child(1) { background: #FF5F57; } .lights i:nth-child(2) { background: #FEBC2E; } .lights i:nth-child(3) { background: #28C840; }
+.titlebar .t { font-size: 13px; font-weight: 600; color: var(--mute); }
+.titlebar .sp { flex: 1; }
+.iconbtn {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--mute); display: grid; place-items: center; cursor: pointer; font-size: 13px;
+}
+kbd {
+  font-family: inherit; font-size: 10.5px; color: var(--mute);
+  background: var(--raised); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px;
+}
+.statusbar {
+  flex: none; height: 28px; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  border-top: 1px solid var(--line); background: var(--raised); font-size: 12px; color: var(--mute);
+}
+.statusbar .sp { flex: 1; }
+.theme-note { font-size: 11px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 99px;
+}
+.badge.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+.badge.warn { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+.badge.mute { background: var(--raised); color: var(--mute); }

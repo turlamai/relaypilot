@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelayPilot — 连接主视图原型</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* ==== 连接主视图 ==== */
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .sidebar {
+    width: 232px; flex: none; display: flex; flex-direction: column; gap: 2px;
+    background: var(--raised); border-right: 1px solid var(--line); padding: 10px 8px;
+    font-size: 13px;
+  }
+  .item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; }
+  .item:hover { background: var(--surface); }
+  .item.active { background: var(--surface); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .phead { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px 24px 10px; }
+  .phead h1 { font-size: 20px; font-weight: 700; }
+  .phead .sp { flex: 1; }
+  .hero { flex: none; padding: 4px 24px 16px; }
+  .session {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px;
+  }
+  .session .top { display: flex; align-items: center; gap: 12px; }
+  .session .profile { font-size: 14px; font-weight: 600; }
+  .session .profile .mono { font-size: 12.5px; color: var(--mute); font-weight: 400; }
+  .session .sp { flex: 1; }
+  .connect {
+    height: 36px; padding: 0 20px; border-radius: 8px; border: none; cursor: default;
+    background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .facts { display: flex; gap: 24px; margin-top: 12px; font-size: 12.5px; color: var(--mute); flex-wrap: wrap; }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .warnline {
+    margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: var(--raised);
+    border-left: 3px solid var(--warn); font-size: 12.5px; color: var(--mute);
+  }
+  .events { flex: 1; overflow-y: auto; padding: 0 24px 16px; }
+  .ehd { font-size: 12px; font-weight: 600; color: var(--mute); padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
+  .event { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .event .ts { font-family: var(--mono); font-size: 11.5px; color: var(--faint); flex: none; }
+  .event .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .link { color: var(--accent); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+  <div class="window" id="app">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="t">RelayPilot — 连接</div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="themeBtn" title="切换亮暗主题">◐</button>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="item active">◉ 连接</div>
+        <div class="item">⟲ DecisionTrace</div>
+        <div class="item">▤ Profile 库</div>
+        <div class="item">✚ 诊断</div>
+        <div class="item">⇄ 同步</div>
+        <div class="item">✦ AI patch</div>
+        <div class="item" style="margin-top:auto">⚙ 设置</div>
+      </aside>
+      <section class="pane">
+        <div class="phead"><h1>连接</h1><span class="badge warn">架构 alpha · 非运行网络</span></div>
+        <div class="hero">
+          <div class="session">
+            <div class="top">
+              <span class="profile">home-lab.yaml <span class="mono">· 校验通过 · 6 规则</span></span>
+              <span class="sp"></span>
+              <button class="connect">◉ 连接</button>
+              <span class="badge mute">未运行</span>
+            </div>
+            <div class="facts">
+              <span>出口策略 <b>policy-main</b></span>
+              <span>引擎 <b>Xray adapter</b></span>
+              <span>artifact <b class="mono">xray-20261111-0412</b></span>
+              <span>digest <b class="mono">9f21c4…</b></span>
+            </div>
+            <div class="warnline">启动前将先执行校验（validate）与 dry-run；engine config 以「已编译 artifact」预览呈现，可回溯到 canonical profile。</div>
+          </div>
+        </div>
+        <div class="events">
+          <div class="ehd">会话事件摘要（最近优先）</div>
+          <div class="event"><span class="ts">04:12:08</span><span class="what">engine dry-run 完成 · 0 错误 · 1 警告（surge-import: 2 字段不支持）</span><span class="link">查看 DecisionTrace →</span></div>
+          <div class="event"><span class="ts">04:11:52</span><span class="what">profile 校验通过 home-lab.yaml（v3 结构）</span><span class="link">查看 →</span></div>
+          <div class="event"><span class="ts">04:10:31</span><span class="what">surge-import 预览：banner 与 2 个不支持字段被报告</span><span class="link">查看导入预览 →</span></div>
+        </div>
+        <div class="statusbar">
+          <span>架构实验 · 引擎纵切 CLI 已验证 · 桌面宿主 M2 计划中</span>
+          <span class="sp"></span>
+          <span class="theme-note">原型 v0.1 · 按 ◐ 切换亮暗 · 契约：design/DESIGN.md</span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      document.getElementById('app').classList.toggle('dark');
+    });
+  </script>
+</body>
+</html>

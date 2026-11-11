@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelayPilot — Profile 库原型（含 Surge 导入预览）</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* ==== Profile 库 ==== */
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .sidebar {
+    width: 232px; flex: none; display: flex; flex-direction: column; gap: 2px;
+    background: var(--raised); border-right: 1px solid var(--line); padding: 10px 8px;
+    font-size: 13px;
+  }
+  .item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; }
+  .item.active { background: var(--surface); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .phead { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px 24px 10px; }
+  .phead h1 { font-size: 20px; font-weight: 700; }
+  .phead .sp { flex: 1; }
+  .list { flex: 1; overflow-y: auto; padding: 0 24px 12px; }
+  .pcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 12px;
+  }
+  .pcard .top { display: flex; align-items: center; gap: 10px; }
+  .pcard .nm { font-size: 14px; font-weight: 600; }
+  .pcard .mono { font-family: var(--mono); font-size: 12px; color: var(--mute); }
+  .pcard .facts { display: flex; gap: 16px; margin-top: 6px; font-size: 12.5px; color: var(--mute); }
+  .pcard .facts b { color: var(--ink); font-weight: 600; }
+  /* ==== Surge 导入预览（不支持字段报告是主角）==== */
+  .import { margin-top: 14px; }
+  .ihd { font-size: 12px; font-weight: 600; color: var(--mute); padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
+  .diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .dcol { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .dcol .dt { font-size: 11.5px; font-weight: 600; margin-bottom: 8px; }
+  .dcol.ok-col .dt { color: var(--ok); }
+  .dcol.warn-col { border-left: 3px solid var(--warn); }
+  .dcol.warn-col .dt { color: var(--warn); }
+  .drow { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 12.5px; color: var(--mute); }
+  .drow .k { font-family: var(--mono); color: var(--ink); }
+  .wrow { padding: 4px 0; font-size: 12.5px; color: var(--mute); }
+  .wrow .k { font-family: var(--mono); color: var(--warn); }
+  .iacts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+  .btn { height: 30px; padding: 0 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  .btn:disabled { opacity: .45; }
+  .hint { font-size: 11.5px; color: var(--mute); margin-right: auto; align-self: center; }
+</style>
+</head>
+<body>
+  <div class="window" id="app">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="t">RelayPilot — Profile 库</div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="themeBtn" title="切换亮暗主题">◐</button>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="item">◉ 连接</div>
+        <div class="item">⟲ DecisionTrace</div>
+        <div class="item active">▤ Profile 库</div>
+        <div class="item">✚ 诊断</div>
+        <div class="item">⇄ 同步</div>
+        <div class="item">✦ AI patch</div>
+        <div class="item" style="margin-top:auto">⚙ 设置</div>
+      </aside>
+      <section class="pane">
+        <div class="phead"><h1>Profile 库</h1><span class="sp"></span><button class="btn">导入 Surge 子集…</button></div>
+        <div class="list">
+          <div class="pcard">
+            <div class="top"><span class="nm">home-lab.yaml</span><span class="badge ok">已验证</span></div>
+            <div class="facts"><span>引擎 <b>Xray adapter</b></span><span>入口 <b>2</b></span><span>规则 <b>6</b></span><span class="mono">9f21c4…e207</span></div>
+          </div>
+          <div class="pcard">
+            <div class="top"><span class="nm">office-inline.yaml</span><span class="badge warn">待验证</span></div>
+            <div class="facts"><span>引擎 <b>Xray adapter</b></span><span>入口 <b>1</b></span><span>规则 <b>3</b></span></div>
+          </div>
+          <div class="pcard">
+            <div class="top"><span class="nm">legacy-full.conf</span><span class="badge mute">不可用</span></div>
+            <div class="facts"><span>Surge 完整导入不支持 · 请拆分子集后重试</span></div>
+          </div>
+        </div>
+        <div class="import" style="flex:1; overflow-y:auto; padding: 0 24px 16px;">
+          <div class="ihd">导入预览：surge-subset.conf（Surge 子集导入即预览，黑盒转换不做）</div>
+          <div class="diff">
+            <div class="dcol ok-col">
+              <div class="dt">✓ 将转入 canonical profile（11 字段）</div>
+              <div class="drow"><span class="k">[Proxy] 3 个出口</span><span>结构映射</span></div>
+              <div class="drow"><span class="k">[Rule] 9 条</span><span>顺序保留</span></div>
+              <div class="drow"><span class="k">[Proxy Group] 1 组</span><span>静态解析</span></div>
+              <div class="drow"><span class="k">DNS server × 2</span><span>DNS intent</span></div>
+            </div>
+            <div class="dcol warn-col">
+              <div class="dt">⚠ 不支持字段（2）——将保留在报告中，不静默丢弃</div>
+              <div class="wrow"><span class="k">external-policy</span><span>无等价引擎能力</span></div>
+              <div class="wrow"><span class="k">URL Rewrite</span><span>超出路由域</span></div>
+            </div>
+          </div>
+          <div class="iacts">
+            <span class="hint">导入即预览 · 原文件不动 · 转入后生成新 canonical profile</span>
+            <button class="btn">取消</button>
+            <button class="btn primary" disabled>确认导入</button>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span>校验状态只陈述已验证事实（不变式 3）</span>
+          <span class="sp"></span>
+          <span class="theme-note">原型 v0.1 · 按 ◐ 切换亮暗</span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      document.getElementById('app').classList.toggle('dark');
+    });
+  </script>
+</body>
+</html>

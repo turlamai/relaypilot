@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelayPilot — DecisionTrace 检查器原型</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* ==== DecisionTrace 检查器（可解释性主角屏）==== */
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .sidebar {
+    width: 232px; flex: none; display: flex; flex-direction: column; gap: 2px;
+    background: var(--raised); border-right: 1px solid var(--line); padding: 10px 8px;
+    font-size: 13px;
+  }
+  .item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; }
+  .item.active { background: var(--surface); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .phead { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px 24px 10px; }
+  .phead h1 { font-size: 20px; font-weight: 700; }
+  .phead .sub { font-size: 12.5px; color: var(--mute); margin-top: 2px; }
+  .trace-id {
+    flex: none; margin: 0 24px 14px; padding: 10px 14px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 12px;
+  }
+  .trace-id .k { color: var(--faint); }
+  .trace-id .v { color: var(--ink); }
+  .trace-id .copy { margin-left: auto; color: var(--accent); font-size: 11.5px; text-decoration: underline; text-underline-offset: 2px; }
+  .chain { flex: 1; overflow-y: auto; padding: 0 24px 20px; }
+  .step { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .step:last-child { border-bottom: none; }
+  .rail { width: 3px; border-radius: 2px; background: var(--ok); flex: none; }
+  .rail.skip { background: var(--line); }
+  .step .no { font-family: var(--mono); font-size: 11.5px; color: var(--faint); flex: none; padding-top: 2px; width: 20px; }
+  .step .b { flex: 1; min-width: 0; }
+  .step .act { font-size: 13.5px; font-weight: 600; }
+  .step .act .mono { font-size: 12.5px; }
+  .step .why { font-size: 12.5px; color: var(--mute); margin-top: 3px; line-height: 1.55; }
+  .step .src { margin-top: 5px; font-size: 12px; color: var(--mute); background: var(--raised); border-radius: 6px; padding: 6px 10px; font-family: var(--mono); }
+  .step .src .lbl { font-family: system-ui, sans-serif; color: var(--accent); font-size: 11px; font-weight: 600; margin-right: 6px; }
+  .warnrow { display: flex; gap: 8px; align-items: center; margin-top: 5px; font-size: 12px; color: var(--warn); }
+  .result {
+    margin: 4px 0 8px; padding: 12px 16px; border-radius: 10px; background: var(--surface);
+    border: 1px solid var(--line); display: flex; align-items: center; gap: 12px;
+  }
+  .result .exit { font-size: 14px; font-weight: 700; }
+  .result .exit .mono { font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="window" id="app">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="t">RelayPilot — DecisionTrace</div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="themeBtn" title="切换亮暗主题">◐</button>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="item">◉ 连接</div>
+        <div class="item active">⟲ DecisionTrace</div>
+        <div class="item">▤ Profile 库</div>
+        <div class="item">✚ 诊断</div>
+        <div class="item">⇄ 同步</div>
+        <div class="item">✦ AI patch</div>
+        <div class="item" style="margin-top:auto">⚙ 设置</div>
+      </aside>
+      <section class="pane">
+        <div class="phead">
+          <div>
+            <h1>DecisionTrace</h1>
+            <div class="sub">explain-route · home-lab.yaml · Xray adapter（回环 dry-run）</div>
+          </div>
+        </div>
+        <div class="trace-id">
+          <span><span class="k">trace_id </span><span class="v">tr_8f21c4a9</span></span>
+          <span><span class="k">adapter </span><span class="v">xray v26.3.27</span></span>
+          <span><span class="k">digest </span><span class="v">9f21c4…e207</span></span>
+          <span class="copy">复制全部</span>
+        </div>
+        <div class="chain">
+          <div class="result">
+            <span class="badge ok">选中出口</span>
+            <span class="exit"><span class="mono">proxy/lab-a</span> · 经策略组 policy-main 解析</span>
+          </div>
+          <div class="step">
+            <span class="no">01</span><div class="rail"></div>
+            <div class="b">
+              <div class="act">Canonical profile 载入 <span class="mono">home-lab.yaml</span></div>
+              <div class="why">结构校验通过（v3）；入口 2、规则 6、策略组 1。</div>
+            </div>
+          </div>
+          <div class="step">
+            <span class="no">02</span><div class="rail"></div>
+            <div class="b">
+              <div class="act">规则命中 <span class="mono">DOMAIN-SUFFIX lab.internal → DIRECT</span></div>
+              <div class="why">目标 <span class="mono">nas.lab.internal</span> 命中规则 3 的后缀匹配，短路直连。</div>
+              <div class="src"><span class="lbl">规则来源</span>home-lab.yaml · rules[2] · 原文「DOMAIN-SUFFIX,lab.internal,DIRECT」</div>
+            </div>
+          </div>
+          <div class="step">
+            <span class="no">03</span><div class="rail skip"></div>
+            <div class="b">
+              <div class="act">规则未命中 <span class="mono">DOMAIN-KEYS github → proxy</span></div>
+              <div class="why">目标不含该键；继续顺序匹配。</div>
+            </div>
+          </div>
+          <div class="step">
+            <span class="no">04</span><div class="rail"></div>
+            <div class="b">
+              <div class="act">策略组解析 <span class="mono">policy-main</span></div>
+              <div class="why">静态成员序：首个可用出口 <span class="mono">proxy/lab-a</span>（健康检查快照：ok）。</div>
+            </div>
+          </div>
+          <div class="step">
+            <span class="no">05</span><div class="rail"></div>
+            <div class="b">
+              <div class="act">Engine artifact 编译 <span class="mono">xray-20261111-0412</span></div>
+              <div class="why">配置由 canonical profile 编译生成；digest 锚定本次 artifact。</div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span>trace 事实字段只读 · 不变式 2（UI 不改写隐藏）</span>
+          <span class="sp"></span>
+          <span class="theme-note">原型 v0.1 · 按 ◐ 切换亮暗</span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      document.getElementById('app').classList.toggle('dark');
+    });
+  </script>
+</body>
+</html>
