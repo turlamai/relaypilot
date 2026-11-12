@@ -52,27 +52,22 @@ Surge（macOS/iOS 网络调试工具）的目标用户与 RelayPilot 高度重�
 - **规则编辑 = 文本 + 校验 + AI patch 预览**，非 GUI 策略组表单编辑器（M2 边界）。
 - **三平台原生机制**——修饰键/菜单/对话框按平台映射与差异声明节落地。
 
-## Tokens（预钉值 · 自 site-kit 家族套件推导）
+## Tokens（预钉语义 · 自 site-kit 家族套件推导）
 
-**来源注明**：以下取自 `site/family.css`（家族 site-kit 套件，官网 `relaypilot.jrtx.site`
-与家族站点同源的品牌色板），映射到产品 token 词汇；`--ok` / `--warn` / `--danger`
-暗态取官网既有状态色原值，亮态按对比度加深推导，`--danger` 暗态与官网窗口红点同源。
-**首个 UI 切片时与原生实现核对后固化**；在此之前变更 tokens 只经本文件。
+**来源注明**：值真源 = `site/family.css`（家族 site-kit 套件，官网 `relaypilot.jrtx.site`
+与家族站点同源的品牌色板）与原型 `design/prototype/shared.css`（预钉值的可执行载体）；
+`--ok` / `--warn` / `--danger` 暗态取官网既有状态色原值，亮态按对比度加深推导，
+`--danger` 暗态与官网窗口红点同源。本表只记语义与推导依据。
+**首个 UI 切片时与原生实现核对后固化**；在此之前变更 tokens 先改原型再改本表语义。
 
-| Token | Light | Dark | 用途 |
-|---|---|---|---|
-| `--bg` | `#FAF8F5` | `#16120F` | 画布 |
-| `--surface` | `#FFFFFF` | `#1F1A16` | 卡片/浮层 |
-| `--raised` | `#F3EFE9` | `#262019` | 悬浮/选中底 |
-| `--line` | `rgba(32,27,22,.12)` | `rgba(241,236,229,.13)` | 分隔 |
-| `--ink` | `#201B16` | `#F1ECE5` | 主文字 |
-| `--mute` | `#5D554C` | `#A89F93` | 次级文字 |
-| `--faint` | `#8A8177` | `#7A7166` | 辅助文字（site-kit text-3） |
-| `--accent` | `#D97757` | `#E08A6B` | 选中/链接/主操作/进行态 |
-| `--accent-soft` | `rgba(217,119,87,.12)` | `rgba(224,138,107,.14)` | accent 弱底（徽标） |
-| `--ok` | `#1F7A45` | `#7EE2A8` | 校验通过/会话正常 |
-| `--warn` | `#B45309` | `#F59E0B` | 待验证/警告（架构 alpha 状态色） |
-| `--danger` | `#B3261E` | `#FF5F57` | 错误/破坏性操作 |
+| Token | 语义 |
+|---|---|
+| `--bg --surface --raised --line` | 画布 / 卡片浮层 / 悬浮选中底 / 分隔 |
+| `--ink --mute --faint` | 主/次级/辅助文字三档（faint = site-kit text-3） |
+| `--accent --accent-soft` | 选中/链接/主操作/进行态 + 弱底徽标 |
+| `--ok` | 校验通过/会话正常 |
+| `--warn` | 待验证/警告（架构 alpha 状态色） |
+| `--danger` | 错误/破坏性操作 |
 
 - **字体**：原生 UI 一律平台系统字体栈（SwiftUI / WinUI 3 / GTK4 各自系统字体 +
   PingFang SC / 微软雅黑 / Noto Sans CJK），不引入 Web 字体；DecisionTrace、CLI 输出与
