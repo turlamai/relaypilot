@@ -123,4 +123,4 @@ The commercial model is intentionally deferred. The working direction is a one-t
 
 ## License
 
-Copyright © 2026 turinglambdaai. No open-source license has been granted yet; the terms are stated in [LICENSE](LICENSE). Third-party engine distributions will carry their own notices and source-offer obligations.
+Copyright © 2026 TurLamAI. No open-source license has been granted yet; the terms are stated in [LICENSE](LICENSE). Third-party engine distributions will carry their own notices and source-offer obligations.
