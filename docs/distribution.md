@@ -12,7 +12,7 @@ this repository is a released VPN, TUN or system-wide network client
   (Racket CS 9.x + Rivet, `raco make`, `raco test`, the CLI golden
   runner). The launchers `scripts/relaypilot-cli.sh` /
   `scripts/relaypilot-cli.cmd` are thin dev/CI shims that run
-  `app/cli.rkt` through the system Racket; they are not installable
+  `racket/cli.rkt` through the system Racket; they are not installable
   programs.
 - **No release assets exist.** `0.1.0` is the package identity recorded in
   [CHANGELOG](../CHANGELOG.md), not a shipped build
@@ -45,7 +45,7 @@ for RelayPilot that means:
   text and the written source offer
   ([third-party provenance](third-party.md)).
 - Release identity must agree across `info.rkt`, `rivet.rktd` and
-  `app/core/version.rkt` (`scripts/check-release-version.sh`, already
+  `racket/core/version.rkt` (`scripts/check-release-version.sh`, already
   enforced in CI).
 - Runtime/host changes need end-to-end evidence on their target OS
   ([AGENTS](../AGENTS.md) verification rules).

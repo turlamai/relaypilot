@@ -29,7 +29,7 @@ Decision `2026-10-auth-1`: No commercial Permit credentials, Commerce checkout o
 Run before submitting changes:
 
 ```bash
-raco make app/backend.rkt
+raco make racket/backend.rkt
 raco test tests/
 python3 shared/cli-golden/runner.py --binary scripts/relaypilot-cli.sh
 scripts/check-release-version.sh
@@ -42,7 +42,7 @@ Runtime/host changes need an end-to-end test on their target OS. Apple native va
 
 ## CLI contract
 
-- The CLI is implemented once in `app/cli.rkt`; launchers are thin shims (`scripts/relaypilot-cli.sh` / `.cmd`). Do not add a second implementation path.
+- The CLI is implemented once in `racket/cli.rkt`; launchers are thin shims (`scripts/relaypilot-cli.sh` / `.cmd`). Do not add a second implementation path.
 - Behavior changes land in `docs/CLI-SPEC.md` first, then re-record `shared/cli-golden/` with `--record` and review the diff; never edit golden bytes by hand and never delete a case to get green.
 - Engine-dependent golden behavior is intentionally out of the golden contract; the runner strips `RELAYPILOT_XRAY_BIN`.
 

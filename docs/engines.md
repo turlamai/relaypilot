@@ -14,7 +14,7 @@ Implemented:
 - domain, domain-suffix, IPv4 CIDR, and final routes
 - deterministic JSON bytes, SHA-256, rule tags, and a source map
 
-Runtime (supervised Xray **process**, `app/core/engines/runtime.rkt`):
+Runtime (supervised Xray **process**, `racket/core/engines/runtime.rkt`):
 
 - pinned binary discovery (`RELAYPILOT_XRAY_BIN`, then `xray` on `PATH`) and version query
 - config validation through `xray run -test` with bounded output evidence

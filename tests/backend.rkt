@@ -3,7 +3,7 @@
 (require rackunit
          rivet/backend
          rivet/protocol
-         "../app/backend.rkt"
+         "../racket/backend.rkt"
          "support.rkt")
 
 (define-values (server-in client-out) (make-pipe))

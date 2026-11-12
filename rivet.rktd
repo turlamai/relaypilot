@@ -10,7 +10,7 @@
         (device-rpcs . (explain-route compile-engine-config engine-dry-run engine-session-start engine-session-stop engine-session-events))
         (macos-min-version . "14.0")
         (windows-min-version . "10.0.19041.0")
-        (backend . "app/backend.rkt")
+        (backend . "racket/backend.rkt")
         (module . "backend")
         (entry . "start")
         (protocol . 1))

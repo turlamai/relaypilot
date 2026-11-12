@@ -69,7 +69,7 @@ canonical Xray JSON + SHA-256
 
 ```bash
 raco pkg install --auto --no-docs rivet
-raco make app/backend.rkt
+raco make racket/backend.rkt
 raco test tests/
 python3 shared/cli-golden/runner.py --binary scripts/relaypilot-cli.sh
 ```
@@ -91,9 +91,9 @@ scripts/relaypilot-cli.sh compile examples/relay-profile.json --out /tmp/xray.js
 ```text
 relaypilot/
 ├── rivet.rktd                 # Rivet 应用契约
-├── app/backend.rkt            # 面向原生 host 的 typed RPC 边界
-├── app/cli.rkt                # agent-facing CLI（docs/CLI-SPEC.md）
-├── app/core/
+├── racket/backend.rkt         # 面向原生 host 的 typed RPC 边界
+├── racket/cli.rkt             # agent-facing CLI（docs/CLI-SPEC.md）
+├── racket/core/
 │   ├── profile/               # canonical Relay Profile
 │   ├── rules/                 # Surge 语法 + 确定性求值器
 │   ├── policy/                # 策略组选择

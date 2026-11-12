@@ -1,11 +1,11 @@
 #lang racket/base
 
 (require rackunit
-         "../app/core/ai/patch.rkt"
-         "../app/core/ai/redact.rkt"
-         "../app/core/decision.rkt"
-         "../app/core/diagnostics/bundle.rkt"
-         "../app/core/model.rkt"
+         "../racket/core/ai/patch.rkt"
+         "../racket/core/ai/redact.rkt"
+         "../racket/core/decision.rkt"
+         "../racket/core/diagnostics/bundle.rkt"
+         "../racket/core/model.rkt"
          "support.rkt")
 
 (define trace

@@ -12,12 +12,12 @@
          racket/port
          racket/string
          racket/tcp
-         "../app/core/errors.rkt"
-         "../app/core/engines/runtime.rkt"
-         "../app/core/engines/xray.rkt"
-         "../app/core/json.rkt"
-         "../app/core/model.rkt"
-         "../app/core/profile/json.rkt")
+         "../racket/core/errors.rkt"
+         "../racket/core/engines/runtime.rkt"
+         "../racket/core/engines/xray.rkt"
+         "../racket/core/json.rkt"
+         "../racket/core/model.rkt"
+         "../racket/core/profile/json.rkt")
 
 (define engine-binary (resolve-engine-binary))
 

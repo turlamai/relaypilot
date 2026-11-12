@@ -2,8 +2,8 @@
 
 (require rackunit
          racket/file
-         "../app/core/model.rkt"
-         "../app/core/storage/local-file.rkt"
+         "../racket/core/model.rkt"
+         "../racket/core/storage/local-file.rkt"
          "support.rkt")
 
 (define root (make-temporary-file "relaypilot-storage-~a" 'directory))

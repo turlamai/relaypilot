@@ -2,8 +2,8 @@
 
 (require rackunit
          racket/string
-         "../app/core/decision.rkt"
-         "../app/core/model.rkt"
+         "../racket/core/decision.rkt"
+         "../racket/core/model.rkt"
          "support.rkt")
 
 (define flow (connection-flow "api.openai.com" #f 443 'tcp "browser"))

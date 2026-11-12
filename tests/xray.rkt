@@ -2,9 +2,9 @@
 
 (require json
          rackunit
-         "../app/core/engines/interface.rkt"
-         "../app/core/engines/xray.rkt"
-         "../app/core/model.rkt"
+         "../racket/core/engines/interface.rkt"
+         "../racket/core/engines/xray.rkt"
+         "../racket/core/model.rkt"
          "support.rkt")
 
 (define first (engine-compile xray-engine-adapter sample-profile))

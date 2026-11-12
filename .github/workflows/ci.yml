@@ -34,7 +34,7 @@ jobs:
       - name: Check third-party notice pin
         run: racket scripts/third-party-notices.rkt --check
       - name: Compile Rivet backend
-        run: raco make app/backend.rkt
+        run: raco make racket/backend.rkt
       - name: Download pinned Xray
         run: |
           mkdir -p "$RUNNER_TEMP/relaypilot-xray"

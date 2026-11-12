@@ -1,8 +1,8 @@
 #lang racket/base
 
 (require rackunit
-         "../app/core/model.rkt"
-         "../app/core/profile/json.rkt"
+         "../racket/core/model.rkt"
+         "../racket/core/profile/json.rkt"
          "support.rkt")
 
 (check-equal? (relay-profile-schema-version sample-profile) 1)

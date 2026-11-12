@@ -2,7 +2,7 @@
 
 (require racket/file
          racket/runtime-path
-         "../app/core/profile/json.rkt")
+         "../racket/core/profile/json.rkt")
 
 (provide sample-profile
          sample-profile-json)

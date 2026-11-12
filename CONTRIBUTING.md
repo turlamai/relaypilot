@@ -19,7 +19,7 @@ Requires Racket CS 9.x and [Rivet](https://github.com/turlamai/rivet):
 
 ```bash
 raco pkg install --auto --no-docs rivet
-raco make app/backend.rkt
+raco make racket/backend.rkt
 raco test tests/
 python3 shared/cli-golden/runner.py --binary scripts/relaypilot-cli.sh
 scripts/check-release-version.sh

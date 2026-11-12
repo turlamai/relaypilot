@@ -1,7 +1,7 @@
 # RelayPilot CLI contract
 
 The CLI is the agent-facing executable surface of the profile → DecisionTrace
-→ adapter dry-run slice. It is implemented once, in `app/cli.rkt`; the
+→ adapter dry-run slice. It is implemented once, in `racket/cli.rkt`; the
 `scripts/relaypilot-cli.sh` (POSIX) and `scripts/relaypilot-cli.cmd` (Windows)
 launchers run it with the system Racket. Every behavior change lands here
 first, then in `shared/cli-golden/` (`--record` re-run, diff reviewed), then

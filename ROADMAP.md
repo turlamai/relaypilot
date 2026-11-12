@@ -16,7 +16,7 @@
 
 - [x] Pin Xray v26.3.27 for configuration compatibility and record checksums/provenance
 - [x] Validate generated configuration with that exact binary in CI
-- [x] Supervised process lifecycle adapter (`app/core/engines/runtime.rkt`): binary discovery, version query, `run -test` validation, session start/stop with bounded structured events
+- [x] Supervised process lifecycle adapter (`racket/core/engines/runtime.rkt`): binary discovery, version query, `run -test` validation, session start/stop with bounded structured events
 - [x] Real loopback SOCKS request through a supervised local engine session against a local test endpoint (CI + local, synthetic credentials only)
 - [x] Credentials synthetic in CI; third-party notices/source-offer workflow (`scripts/third-party-notices.rkt`, `docs/third-party.md`)
 - [ ] Pin the platform-specific libXray build used by the first runtime host (stays open until the first embedded runtime exists; the process pin above is separate)

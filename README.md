@@ -69,7 +69,7 @@ Requires Racket CS 9.x and [Rivet](https://github.com/turlamai/rivet):
 
 ```bash
 raco pkg install --auto --no-docs rivet
-raco make app/backend.rkt
+raco make racket/backend.rkt
 raco test tests/
 python3 shared/cli-golden/runner.py --binary scripts/relaypilot-cli.sh
 ```
@@ -91,9 +91,9 @@ scripts/relaypilot-cli.sh compile examples/relay-profile.json --out /tmp/xray.js
 ```text
 relaypilot/
 ├── rivet.rktd                 # Rivet application contract
-├── app/backend.rkt            # typed native-host RPC boundary
-├── app/cli.rkt                # agent-facing CLI (docs/CLI-SPEC.md)
-├── app/core/
+├── racket/backend.rkt         # typed native-host RPC boundary
+├── racket/cli.rkt             # agent-facing CLI (docs/CLI-SPEC.md)
+├── racket/core/
 │   ├── profile/               # canonical Relay Profile
 │   ├── rules/                 # Surge syntax + deterministic evaluator
 │   ├── policy/                # group selection

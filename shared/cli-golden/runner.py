@@ -38,7 +38,7 @@ REPO = SHARED_DIR.parent.parent
 
 VERSION = re.search(
     r'\(define app-version "([^"]+)"\)',
-    (REPO / "app" / "core" / "version.rkt").read_text(encoding="utf-8"),
+    (REPO / "racket" / "core" / "version.rkt").read_text(encoding="utf-8"),
 ).group(1)
 
 

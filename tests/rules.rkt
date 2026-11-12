@@ -1,9 +1,9 @@
 #lang racket/base
 
 (require rackunit
-         "../app/core/model.rkt"
-         "../app/core/rules/evaluator.rkt"
-         "../app/core/rules/surge.rkt")
+         "../racket/core/model.rkt"
+         "../racket/core/rules/evaluator.rkt"
+         "../racket/core/rules/surge.rkt")
 
 (define rules
   (parse-surge-rules '("# comment" "DOMAIN,api.openai.com,AI"

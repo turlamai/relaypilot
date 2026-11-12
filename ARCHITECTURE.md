@@ -36,7 +36,7 @@ NetworkExtension · VpnService · Windows service · Linux daemon
 
 ## First implemented slice
 
-`app/core/profile/json.rkt` loads and validates schema v1. `app/core/rules/surge.rkt` imports the supported Surge line grammar. `app/core/decision.rkt` produces a stable `DecisionTrace`. `app/core/engines/plan.rkt` freezes current policy selections and source locations. `app/core/engines/xray.rkt` emits canonical JSON and a SHA-256 identity.
+`racket/core/profile/json.rkt` loads and validates schema v1. `racket/core/rules/surge.rkt` imports the supported Surge line grammar. `racket/core/decision.rkt` produces a stable `DecisionTrace`. `racket/core/engines/plan.rkt` freezes current policy selections and source locations. `racket/core/engines/xray.rkt` emits canonical JSON and a SHA-256 identity.
 
 The Xray compiler currently supports one intentionally narrow protocol slice: VLESS over RAW with TLS or REALITY. Unsupported protocols and rules fail at compile time. This is preferable to a broad adapter whose runtime behavior RelayPilot cannot explain.
 
