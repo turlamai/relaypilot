@@ -1,9 +1,12 @@
 #lang racket/base
 
-(require racket/string
-         "../diagnostics/bundle.rkt")
+(require racket/list
+         racket/string
+         "../diagnostics/bundle.rkt"
+         "../model.rkt")
 
-(provide redact-diagnostic-bundle)
+(provide redact-diagnostic-bundle
+         profile-secrets)
 
 (define (redact-value value secrets)
   (cond
@@ -26,3 +29,13 @@
                      (redact-value (diagnostic-bundle-decision bundle) secrets)
                      (redact-value (diagnostic-bundle-engine-events bundle) secrets)
                      (redact-value (diagnostic-bundle-comparable-failures bundle) secrets)))
+
+;; Profile secret material that must not leak into diagnostics. Values shorter
+;; than 8 characters are structural ("none", "chrome") rather than secrets.
+(define (profile-secrets profile)
+  (remove-duplicates
+   (for*/list ([node (in-list (relay-profile-nodes profile))]
+               [table (in-list (list (proxy-node-credentials node) (proxy-node-tls node)))]
+               [value (in-hash-values table)]
+               #:when (and (string? value) (>= (string-length value) 8)))
+     value)))

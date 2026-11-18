@@ -8,7 +8,8 @@
 
 (provide read-relay-profile
          parse-relay-profile
-         relay-profile->jsexpr)
+         relay-profile->jsexpr
+         rule->string)
 
 (define missing (gensym 'missing))
 

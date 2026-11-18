@@ -7,7 +7,7 @@
         (url-schemes . ())
         (file-associations . ())
         (resources . ("examples"))
-        (device-rpcs . (explain-route compile-engine-config engine-dry-run engine-session-start engine-session-stop engine-session-events))
+        (device-rpcs . (explain-route compile-engine-config engine-dry-run engine-session-start engine-session-stop engine-session-events diagnose-route library-list library-read-profile library-import-preview library-import-commit library-update-rules library-delete-profile library-set-active library-patch-preview library-patch-apply))
         (macos-min-version . "14.0")
         (windows-min-version . "10.0.19041.0")
         (backend . "racket/backend.rkt")

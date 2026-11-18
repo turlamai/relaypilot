@@ -23,7 +23,6 @@
          "core/profile/json.rkt"
          "core/rules/surge.rkt"
          "core/version.rkt")
-
 (provide run-cli)
 
 ;; ---- emission ----------------------------------------------------------------
@@ -132,16 +131,6 @@
           (symbol->string (connection-flow-network flow))
           'sourceApp
           (absent (connection-flow-source-app flow))))
-
-;; Profile secret material that must not leak into diagnostics. Values shorter
-;; than 8 characters are structural ("none", "chrome") rather than secrets.
-(define (profile-secrets profile)
-  (remove-duplicates
-   (for*/list ([node (in-list (relay-profile-nodes profile))]
-               [table (in-list (list (proxy-node-credentials node) (proxy-node-tls node)))]
-               [value (in-hash-values table)]
-               #:when (and (string? value) (>= (string-length value) 8)))
-     value)))
 
 ;; ---- commands ------------------------------------------------------------------
 

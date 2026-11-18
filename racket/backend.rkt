@@ -3,12 +3,18 @@
 (require racket/list
          rivet/backend
          (prefix-in core: "core/model.rkt")
+         "core/ai/redact.rkt"
          "core/decision.rkt"
+         "core/diagnostics/bundle.rkt"
          "core/engines/interface.rkt"
          "core/engines/runtime.rkt"
          "core/engines/xray.rkt"
          "core/errors.rkt"
          "core/json.rkt"
+         ;; The library RPCs share names with the core functions they wrap;
+         ;; a prefix keeps the RPC bodies from shadowing themselves.
+         (prefix-in lib: "core/library.rkt")
+         "core/model.rkt"
          "core/profile/json.rkt")
 
 (provide start)
@@ -31,6 +37,199 @@
 (define-record EngineSessionHandle ([sessionId : String] [inboundPort : Int64] [engineVersion : String]))
 
 (define-record EngineSessionStop ([stopped : Bool] [exitStatus : String] [events : (List String)]))
+
+(define-record ProfileIssue ([index : Int64] [code : String] [detail : String]))
+
+(define-record LibraryEntry ([id : String]
+                             [name : String]
+                             [description : String]
+                             [ruleCount : Int64]
+                             [status : String]
+                             [issues : (List ProfileIssue)]
+                             [targets : (List String)]))
+
+(define-record LibrarySnapshot ([activeProfileId : String] [profiles : (List LibraryEntry)]))
+
+(define-record UnsupportedLine ([line : Int64] [text : String] [code : String] [detail : String]))
+
+(define-record ImportPreview ([importableRules : (List String)]
+                              [placeholderGroups : (List String)]
+                              [unsupported : (List UnsupportedLine)]
+                              [hasFinal : Bool]
+                              [warnings : (List String)]
+                              [nameAvailable : Bool]))
+
+(define-record LibraryMutation ([profileId : String] [ruleCount : Int64]))
+
+(define-record PatchPreview ([sameAsCurrent : Bool]
+                             [currentPolicy : String]
+                             [currentOutbound : String]
+                             [nextPolicy : String]
+                             [nextOutbound : String]
+                             [ruleText : String]))
+
+(define-record PatchOutcome ([ruleIndex : Int64] [rules : (List String)]))
+
+;; ---- library RPCs ----------------------------------------------------------------
+;; The library root is a user-owned folder the host passes on every call; the
+;; backend keeps no cross-call library state. Errors use the shared
+;; exn:fail:relaypilot classification so hosts can present one kind taxonomy.
+
+(define (issue->record entry-issue)
+  (ProfileIssue (hash-ref entry-issue 'index)
+                (hash-ref entry-issue 'code)
+                (hash-ref entry-issue 'detail)))
+
+(define (entry->record entry)
+  (LibraryEntry (hash-ref entry 'id)
+                (hash-ref entry 'name)
+                (hash-ref entry 'description)
+                (hash-ref entry 'ruleCount)
+                (hash-ref entry 'status)
+                (map issue->record (hash-ref entry 'issues))
+                (hash-ref entry 'targets)))
+
+(define-rpc (library-list [root : String] : LibrarySnapshot)
+            (define snapshot (lib:library-snapshot root))
+            (LibrarySnapshot (hash-ref snapshot 'activeProfileId)
+                             (map entry->record (hash-ref snapshot 'profiles))))
+
+(define-rpc (library-read-profile [root : String] [profileId : String] : String)
+            (define-values (_path profile _issues) (lib:require-profile root profileId))
+            (bytes->string/utf-8
+             (jsexpr->canonical-bytes (relay-profile->jsexpr profile))))
+
+(define (require-name name)
+  (unless (and (string? name) (positive? (string-length name)) (<= (string-length name) 80))
+    (raise-relaypilot 'validation 1 "profile name must be 1-80 characters")))
+
+(define-rpc (library-import-preview [root : String] [name : String] [text : String]
+                                    :
+                                    ImportPreview)
+            (require-name name)
+            (define preview (lib:surge-import-preview text))
+            (ImportPreview (hash-ref preview 'rules)
+                           (hash-ref preview 'groups)
+                           (for/list ([row (in-list (hash-ref preview 'unsupported))])
+                             (UnsupportedLine (hash-ref row 'line)
+                                              (hash-ref row 'text)
+                                              (hash-ref row 'code)
+                                              (hash-ref row 'detail)))
+                           (hash-ref preview 'hasFinal)
+                           (hash-ref preview 'warnings)
+                           (not (lib:profile-name-taken? root name))))
+
+(define-rpc (library-import-commit [root : String]
+                                   [name : String]
+                                   [description : String]
+                                   [text : String]
+                                   :
+                                   LibraryMutation)
+            (define result (lib:library-import-commit! root name description text))
+            (LibraryMutation (hash-ref result 'profileId)
+                             (hash-ref result 'ruleCount)))
+
+(define-rpc (library-update-rules [root : String]
+                                  [profileId : String]
+                                  [rulesText : String]
+                                  :
+                                  LibraryMutation)
+            (define result (lib:library-update-rules! root profileId rulesText))
+            (LibraryMutation (hash-ref result 'profileId)
+                             (hash-ref result 'ruleCount)))
+
+(define-rpc (library-delete-profile [root : String] [profileId : String] : LibraryMutation)
+            (lib:library-delete-profile! root profileId)
+            (LibraryMutation profileId 0))
+
+(define-rpc (library-set-active [root : String] [profileId : String] : LibraryMutation)
+            (lib:library-set-active! root profileId)
+            (LibraryMutation profileId 0))
+
+(define-rpc (library-patch-preview [root : String]
+                                   [profileId : String]
+                                   [target : String]
+                                   [policy : String]
+                                   :
+                                   PatchPreview)
+            (define result (lib:library-patch-preview root profileId target policy))
+            (PatchPreview (hash-ref result 'sameAsCurrent)
+                          (hash-ref result 'currentPolicy)
+                          (hash-ref result 'currentOutbound)
+                          (hash-ref result 'nextPolicy)
+                          (hash-ref result 'nextOutbound)
+                          (hash-ref result 'ruleText)))
+
+(define-rpc (library-patch-apply [root : String]
+                                 [profileId : String]
+                                 [target : String]
+                                 [policy : String]
+                                 :
+                                 PatchOutcome)
+            (define result (lib:library-patch-apply! root profileId target policy))
+            (PatchOutcome (hash-ref result 'ruleIndex)
+                          (hash-ref result 'rules)))
+
+;; ---- diagnostics RPC ---------------------------------------------------------------
+
+(define (diagnostic-bundle->jsexpr bundle)
+  (hasheq 'schemaVersion
+          (diagnostic-bundle-schema-version bundle)
+          'traceId
+          (diagnostic-bundle-trace-id bundle)
+          'profileId
+          (diagnostic-bundle-profile-id bundle)
+          'connection
+          (diagnostic-bundle-connection bundle)
+          'decision
+          (diagnostic-bundle-decision bundle)
+          'engineEvents
+          (diagnostic-bundle-engine-events bundle)
+          'comparableFailures
+          (diagnostic-bundle-comparable-failures bundle)))
+
+;; Secrets plus every target-derived fact: the queried domain, the flow ip,
+;; and the domain rule values that appear in trace steps and rule sources.
+(define (diagnose-route-mask profile domain ip)
+  (append
+   (profile-secrets profile)
+   (filter (lambda (value)
+             (and (string? value) (positive? (string-length value))))
+           (cons domain
+                 (cons ip
+                       (for/list ([rule (in-list (core:relay-profile-rules profile))]
+                                  #:when (memq (core:relay-rule-kind rule)
+                                               '(domain domain-suffix)))
+                         (core:relay-rule-value rule)))))))
+
+(define-rpc (diagnose-route [profileJson : String]
+                            [domain : String]
+                            [ip : String]
+                            [port : Int64]
+                            [network : String]
+                            [redact : Bool]
+                            :
+                            String)
+            (define profile (read-relay-profile profileJson))
+            (define trace
+              (decide-flow profile
+                           (core:connection-flow (if (string=? domain "") #f domain)
+                                                 (if (string=? ip "") #f ip)
+                                                 port
+                                                 (string->symbol network)
+                                                 #f)))
+            (define bundle (trace->diagnostic-bundle trace))
+            (define prepared
+              (if redact
+                  ;; Target-derived facts leave the export together with the
+                  ;; trace id, matching the host's redaction contract.
+                  (struct-copy diagnostic-bundle
+                               (redact-diagnostic-bundle
+                                bundle
+                                (diagnose-route-mask profile domain ip))
+                               [trace-id "[redacted]"])
+                  bundle))
+            (bytes->string/utf-8 (jsexpr->canonical-bytes (diagnostic-bundle->jsexpr prepared))))
 
 (define-rpc (explain-route [profileJson : String]
                            [domain : String]
@@ -141,9 +340,27 @@
            EngineDryRun
            EngineSessionHandle
            EngineSessionStop
+           ProfileIssue
+           LibraryEntry
+           LibrarySnapshot
+           UnsupportedLine
+           ImportPreview
+           LibraryMutation
+           PatchPreview
+           PatchOutcome
            explain-route
            compile-engine-config
            engine-dry-run
            engine-session-start
            engine-session-stop
-           engine-session-events))
+           engine-session-events
+           library-list
+           library-read-profile
+           library-import-preview
+           library-import-commit
+           library-update-rules
+           library-delete-profile
+           library-set-active
+           library-patch-preview
+           library-patch-apply
+           diagnose-route))
