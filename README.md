@@ -119,7 +119,7 @@ relaypilot/
 - AI can explain or propose a typed, validated patch. It cannot directly mutate a live profile.
 - Protocol engines are replaceable infrastructure. RelayPilot-specific semantics stay here.
 
-The commercial model is intentionally deferred. The working direction is a one-time purchase for the current feature generation with optional paid feature updates, at a lower price than Surge.
+The current goal is a safe, verifiable architecture alpha and an understandable local workflow. No commercial service, paid update window or purchasing feature is planned.
 
 ## License
 
