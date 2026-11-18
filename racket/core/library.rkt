@@ -34,6 +34,7 @@
          library-patch-preview
          library-patch-apply!
          library-restore-profile!
+         library-validate-rules
          require-profile
          require-valid-profile
          profile-name-taken?
@@ -487,6 +488,40 @@
         (hash-set state 'activeProfileId id)))
   (write-library-state! root (set-state-description! state-with-active id description))
   (hasheq 'profileId id 'ruleCount (length (relay-profile-rules profile))))
+
+;; Editor preview validation: report issues for a candidate rule set
+;; without writing anything. Shares the update path's checks.
+(define (library-validate-rules root profile-id rules-text)
+  (define-values (_path profile _issues) (require-profile root profile-id))
+  (define known-targets (profile-targets profile))
+  (define parsed
+    (with-handlers
+      ([exn:fail?
+        (lambda (exn)
+          (list (issue 0 "parse-error" (format "rules do not parse: ~a" (exn-message exn)))))])
+      (parse-surge-rules rules-text profile-id)))
+  (define issues
+    (append
+     (for/list ([rule (in-list parsed)]
+                #:unless (member (relay-rule-policy rule) known-targets))
+       (issue (relay-rule-index rule) "unknown-rule-policy"
+              (format "rule references unknown policy: ~a" (relay-rule-policy rule))))
+     (for/list ([rule (in-list parsed)]
+                #:when (and (memq (relay-rule-kind rule) '(domain domain-suffix))
+                            (not (valid-hostname? (relay-rule-value rule)))))
+       (issue (relay-rule-index rule) "invalid-domain"
+              (format "invalid domain value: ~a" (relay-rule-value rule))))))
+  (if (pair? issues)
+      issues
+      (let ([candidate
+             (relay-profile (relay-profile-schema-version profile)
+                            (relay-profile-id profile)
+                            (relay-profile-name profile)
+                            (relay-profile-nodes profile)
+                            (relay-profile-policies profile)
+                            parsed
+                            (relay-profile-dns profile))])
+        (profile-validation-issues candidate))))
 
 ;; Rule editor: replace the rule set of an existing profile with parsed lines.
 (define (library-update-rules! root profile-id rules-text)

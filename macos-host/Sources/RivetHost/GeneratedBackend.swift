@@ -336,6 +336,10 @@ public struct RivetAPI: Sendable {
         let rivetResult = try await client.call("library-update-rules", arguments: [encode_String(root), encode_String(profileId), encode_String(rulesText)])
         return try decode_LibraryMutation(rivetResult)
     }
+    public func library_validate_rules(root: String, profileId: String, rulesText: String) async throws -> [RivetTypes.ProfileIssue] {
+        let rivetResult = try await client.call("library-validate-rules", arguments: [encode_String(root), encode_String(profileId), encode_String(rulesText)])
+        return try decode__List_ProfileIssue_(rivetResult)
+    }
 }
 
 public enum RivetDeviceRequests {
@@ -531,6 +535,18 @@ public enum RivetDeviceRequests {
             self.profileJson = profileJson
         }
     }
+    public struct LibraryValidateRules: RivetDeviceRequest {
+        public typealias Response = [RivetTypes.ProfileIssue]
+        public static let route = "rpc.library-validate-rules"
+        public let root: String
+        public let profileId: String
+        public let rulesText: String
+        public init(root: String, profileId: String, rulesText: String) {
+            self.root = root
+            self.profileId = profileId
+            self.rulesText = rulesText
+        }
+    }
 }
 
 public extension RivetDeviceClient {
@@ -584,6 +600,9 @@ public extension RivetDeviceClient {
     }
     func library_restore_profile(root: String, profileJson: String) async throws -> RivetTypes.LibraryMutation {
         try await send(RivetDeviceRequests.LibraryRestoreProfile(root: root, profileJson: profileJson))
+    }
+    func library_validate_rules(root: String, profileId: String, rulesText: String) async throws -> [RivetTypes.ProfileIssue] {
+        try await send(RivetDeviceRequests.LibraryValidateRules(root: root, profileId: profileId, rulesText: rulesText))
     }
 }
 
@@ -639,6 +658,9 @@ public extension RivetDeviceRouter {
         }
         try register(RivetDeviceRequests.LibraryRestoreProfile.self) { request in
             try await api.library_restore_profile(root: request.root, profileJson: request.profileJson)
+        }
+        try register(RivetDeviceRequests.LibraryValidateRules.self) { request in
+            try await api.library_validate_rules(root: request.root, profileId: request.profileId, rulesText: request.rulesText)
         }
     }
 }
@@ -706,4 +728,5 @@ public extension RivetDeviceAppleRVT1Client {
 // - library-patch-preview
 // - library-patch-apply
 // - library-restore-profile
+// - library-validate-rules
 #endif

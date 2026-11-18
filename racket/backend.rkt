@@ -170,6 +170,14 @@
             (PatchOutcome (hash-ref result 'ruleIndex)
                           (hash-ref result 'rules)))
 
+(define-rpc (library-validate-rules [root : String]
+                                    [profileId : String]
+                                    [rulesText : String]
+                                    :
+                                    (List ProfileIssue))
+            (map issue->record
+                 (lib:library-validate-rules root profileId rulesText)))
+
 (define-rpc (library-restore-profile [root : String] [profileJson : String]
                                      :
                                      LibraryMutation)
@@ -371,4 +379,5 @@
            library-patch-preview
            library-patch-apply
            library-restore-profile
+           library-validate-rules
            diagnose-route))

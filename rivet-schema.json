@@ -50,6 +50,9 @@
     },
     {
       "name": "library-update-rules"
+    },
+    {
+      "name": "library-validate-rules"
     }
   ],
   "enums": [],
@@ -1014,6 +1017,39 @@
       "result": {
         "kind": "record",
         "name": "LibraryMutation"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "rulesText",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-validate-rules",
+      "result": {
+        "element": {
+          "kind": "record",
+          "name": "ProfileIssue"
+        },
+        "kind": "list"
       }
     }
   ],
