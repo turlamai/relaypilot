@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Single source of truth for the rivet pin; every job installs the same
+  # commit and info.rkt deliberately does not declare rivet (family rule).
+  RIVET_PIN: 642bad4bd5c4892a72f9c9d05d0368fb5a9cebac
+
 concurrency:
   # Do not silently cancel or replace the quality result of a main commit.
   # GitHub concurrency groups also coalesce pending runs, so use the unique
@@ -19,9 +24,6 @@ jobs:
   racket:
     runs-on: ubuntu-24.04
     env:
-      # Single source of truth for the rivet pin; the backend requires it and
-      # info.rkt deliberately does not declare it (family rule, autarx).
-      RIVET_PIN: 642bad4bd5c4892a72f9c9d05d0368fb5a9cebac
       XRAY_VERSION: v26.3.27
       XRAY_SHA256: 23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae
     steps:
@@ -63,3 +65,25 @@ jobs:
             --out "$RUNNER_TEMP/relaypilot-xray/config.json"
           "$RUNNER_TEMP/relaypilot-xray/runtime/xray" run -test \
             -config "$RUNNER_TEMP/relaypilot-xray/config.json"
+
+  macos-host:
+    name: macOS host build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Racket (CS, arm64)
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          architecture: arm64
+      - name: Install pinned rivet
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
+      - name: Build + package + verify
+        run: raco rivet package
+      - name: Launch smoke
+        run: |
+          open dist/relaypilot.app
+          sleep 10
+          pgrep -f "relaypilot.app" >/dev/null || { echo "::error::app did not stay running"; exit 1; }
+          pkill -f "relaypilot.app" || true

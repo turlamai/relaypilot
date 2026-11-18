@@ -23,10 +23,10 @@
 
 ## M2 — First usable desktop path
 
-- [ ] Implement one native desktop host, preferably macOS or Windows
-- [ ] Connect/disconnect/status and a minimal connection/DecisionTrace inspector
+- [x] Implement one native desktop host, preferably macOS or Windows — macOS SwiftUI anchor leg (issue #10, 2026-11-19); Windows/Linux legs follow
+- [x] Connect/disconnect/status and a minimal connection/DecisionTrace inspector — engine-session lifecycle over RVT1 plus the real explain-route trace, expectation compare, and route patch
 - [ ] Add the platform tunnel/service boundary without moving VPN semantics into Rivet
-- [ ] Import a real user-owned Surge profile subset and report unsupported fields
+- [x] Import a real user-owned Surge profile subset and report unsupported fields — per-line import preview with placeholder-group mapping, wired through library-import RPCs
 - [ ] Reserve the update-mechanism slot for the first shipped host: an Ed25519-signed update feed aligned with the family UPDATE contract (canonical copy: `turlamai/taskly` `shared/spec/UPDATE.md`); no auto-updater exists today and none ships before this contract is adopted here (release plan: [docs/distribution.md](docs/distribution.md))
 
 ## M3 — Cross-platform proof
