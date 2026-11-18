@@ -33,6 +33,7 @@
          library-set-active!
          library-patch-preview
          library-patch-apply!
+         library-restore-profile!
          require-profile
          require-valid-profile
          profile-name-taken?
@@ -534,6 +535,27 @@
   (define state (read-library-state root))
   (write-library-state! root (hash-set state 'activeProfileId profile-id))
   (hasheq 'profileId profile-id 'ruleCount 0))
+
+;; Single-step undo support: hosts snapshot canonical profile JSON before a
+;; mutation and call this with the previous bytes. The engine re-parses and
+;; re-validates, so undo can never resurrect a broken profile.
+(define (library-restore-profile! root profile-json)
+  (define profile
+    (with-handlers
+      ([exn:fail?
+        (lambda (exn)
+          (raise-relaypilot 'validation 1
+                            (format "snapshot does not parse as a profile: ~a"
+                                    (exn-message exn))))])
+      (read-relay-profile profile-json)))
+  (define issues (profile-validation-issues profile))
+  (unless (null? issues)
+    (raise-relaypilot 'validation 1
+                      (format "snapshot profile has unresolved issues: ~a"
+                              (hash-ref (car issues) 'detail ""))))
+  (write-profile! root profile)
+  (hasheq 'profileId (relay-profile-id profile)
+          'ruleCount (length (relay-profile-rules profile))))
 
 ;; ---- route patches ------------------------------------------------------------------
 

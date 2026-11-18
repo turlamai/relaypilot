@@ -170,6 +170,13 @@
             (PatchOutcome (hash-ref result 'ruleIndex)
                           (hash-ref result 'rules)))
 
+(define-rpc (library-restore-profile [root : String] [profileJson : String]
+                                     :
+                                     LibraryMutation)
+            (define result (lib:library-restore-profile! root profileJson))
+            (LibraryMutation (hash-ref result 'profileId)
+                             (hash-ref result 'ruleCount)))
+
 ;; ---- diagnostics RPC ---------------------------------------------------------------
 
 (define (diagnostic-bundle->jsexpr bundle)
@@ -363,4 +370,5 @@
            library-set-active
            library-patch-preview
            library-patch-apply
+           library-restore-profile
            diagnose-route))

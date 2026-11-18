@@ -123,6 +123,23 @@
                 (check-equal? (list-ref outcome 0) 1)
                 (check-equal? (car (list-ref outcome 1)) "DOMAIN,nas.lab.internal,REJECT")
 
+                ;; Single-step undo: the pre-patch canonical bytes restore.
+                (define before-patch
+                  (call "library-read-profile" (path->string library-root) profile-id))
+                (call "library-patch-apply"
+                      (path->string library-root) profile-id "nas.lab.internal" "REJECT")
+                (define restored
+                  (call "library-restore-profile" (path->string library-root) before-patch))
+                (check-equal? (list-ref restored 0) profile-id)
+                (define after-restore
+                  (call "library-read-profile" (path->string library-root) profile-id))
+                (check-equal? after-restore before-patch)
+                (check-exn-rpc
+                 "restore refuses non-profile bytes"
+                 (lambda ()
+                   (call "library-restore-profile" (path->string library-root) "{not json"))
+                 #rx"does not parse")
+
                 (define diagnosis
                   (call "diagnose-route" profile-json "nas.lab.internal" "" 443 "tcp" #t))
                 (check-regexp-match #rx"\"traceId\":\"\\[redacted\\]\"" diagnosis)

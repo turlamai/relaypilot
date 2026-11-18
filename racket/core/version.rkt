@@ -16,5 +16,5 @@
 (define app-version "0.1.0")
 (define app-build 1)
 (define app-identifier "ai.turinglambda.relaypilot")
-(define app-channel 'alpha)
+(define app-channel 'dev)
 (define app-display-name "RelayPilot")

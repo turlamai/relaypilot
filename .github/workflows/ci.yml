@@ -19,6 +19,9 @@ jobs:
   racket:
     runs-on: ubuntu-24.04
     env:
+      # Single source of truth for the rivet pin; the backend requires it and
+      # info.rkt deliberately does not declare it (family rule, autarx).
+      RIVET_PIN: 642bad4bd5c4892a72f9c9d05d0368fb5a9cebac
       XRAY_VERSION: v26.3.27
       XRAY_SHA256: 23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae
     steps:
@@ -27,6 +30,8 @@ jobs:
         with:
           version: stable
           architecture: x64
+      - name: Install pinned rivet
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Install package
         run: raco pkg install --auto --no-docs --name relaypilot "$GITHUB_WORKSPACE"
       - name: Check release identity

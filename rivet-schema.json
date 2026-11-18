@@ -1,0 +1,1022 @@
+{
+  "device-rpcs": [
+    {
+      "name": "compile-engine-config"
+    },
+    {
+      "name": "diagnose-route"
+    },
+    {
+      "name": "engine-dry-run"
+    },
+    {
+      "name": "engine-session-events"
+    },
+    {
+      "name": "engine-session-start"
+    },
+    {
+      "name": "engine-session-stop"
+    },
+    {
+      "name": "explain-route"
+    },
+    {
+      "name": "library-delete-profile"
+    },
+    {
+      "name": "library-import-commit"
+    },
+    {
+      "name": "library-import-preview"
+    },
+    {
+      "name": "library-list"
+    },
+    {
+      "name": "library-patch-apply"
+    },
+    {
+      "name": "library-patch-preview"
+    },
+    {
+      "name": "library-read-profile"
+    },
+    {
+      "name": "library-restore-profile"
+    },
+    {
+      "name": "library-set-active"
+    },
+    {
+      "name": "library-update-rules"
+    }
+  ],
+  "enums": [],
+  "events": [],
+  "format": "rivet-schema",
+  "format-version": 1,
+  "records": [
+    {
+      "fields": [
+        {
+          "name": "adapter",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "adapterVersion",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "sha256",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "json",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "CompiledEngineConfig"
+    },
+    {
+      "fields": [
+        {
+          "name": "adapter",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "adapterVersion",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "sha256",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "available",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "validated",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "engineVersion",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "engineOutput",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "EngineDryRun"
+    },
+    {
+      "fields": [
+        {
+          "name": "sessionId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "inboundPort",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "engineVersion",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "EngineSessionHandle"
+    },
+    {
+      "fields": [
+        {
+          "name": "stopped",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "exitStatus",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "events",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "EngineSessionStop"
+    },
+    {
+      "fields": [
+        {
+          "name": "importableRules",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "placeholderGroups",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "unsupported",
+          "type": {
+            "element": {
+              "kind": "record",
+              "name": "UnsupportedLine"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "hasFinal",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "warnings",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "nameAvailable",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "ImportPreview"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "description",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ruleCount",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "issues",
+          "type": {
+            "element": {
+              "kind": "record",
+              "name": "ProfileIssue"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "targets",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "LibraryEntry"
+    },
+    {
+      "fields": [
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ruleCount",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        }
+      ],
+      "name": "LibraryMutation"
+    },
+    {
+      "fields": [
+        {
+          "name": "activeProfileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profiles",
+          "type": {
+            "element": {
+              "kind": "record",
+              "name": "LibraryEntry"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "LibrarySnapshot"
+    },
+    {
+      "fields": [
+        {
+          "name": "ruleIndex",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "rules",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "PatchOutcome"
+    },
+    {
+      "fields": [
+        {
+          "name": "sameAsCurrent",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "currentPolicy",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "currentOutbound",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "nextPolicy",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "nextOutbound",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ruleText",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "PatchPreview"
+    },
+    {
+      "fields": [
+        {
+          "name": "index",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "code",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "detail",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "ProfileIssue"
+    },
+    {
+      "fields": [
+        {
+          "name": "traceId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ruleIndex",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "policy",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "outbound",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "steps",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "warnings",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "list"
+          }
+        }
+      ],
+      "name": "RouteDecision"
+    },
+    {
+      "fields": [
+        {
+          "name": "line",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "text",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "code",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "detail",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "UnsupportedLine"
+    }
+  ],
+  "rpcs": [
+    {
+      "arguments": [
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "compile-engine-config",
+      "result": {
+        "kind": "record",
+        "name": "CompiledEngineConfig"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "domain",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ip",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "port",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "network",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "redact",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "diagnose-route",
+      "result": {
+        "kind": "scalar",
+        "name": "String"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "socksPort",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        }
+      ],
+      "name": "engine-dry-run",
+      "result": {
+        "kind": "record",
+        "name": "EngineDryRun"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "sessionId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "engine-session-events",
+      "result": {
+        "element": {
+          "kind": "scalar",
+          "name": "String"
+        },
+        "kind": "list"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "socksPort",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        }
+      ],
+      "name": "engine-session-start",
+      "result": {
+        "kind": "record",
+        "name": "EngineSessionHandle"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "sessionId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "engine-session-stop",
+      "result": {
+        "kind": "record",
+        "name": "EngineSessionStop"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "domain",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ip",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "port",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "network",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "explain-route",
+      "result": {
+        "kind": "record",
+        "name": "RouteDecision"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-delete-profile",
+      "result": {
+        "kind": "record",
+        "name": "LibraryMutation"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "description",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "text",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-import-commit",
+      "result": {
+        "kind": "record",
+        "name": "LibraryMutation"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "text",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-import-preview",
+      "result": {
+        "kind": "record",
+        "name": "ImportPreview"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-list",
+      "result": {
+        "kind": "record",
+        "name": "LibrarySnapshot"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "target",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "policy",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-patch-apply",
+      "result": {
+        "kind": "record",
+        "name": "PatchOutcome"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "target",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "policy",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-patch-preview",
+      "result": {
+        "kind": "record",
+        "name": "PatchPreview"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-read-profile",
+      "result": {
+        "kind": "scalar",
+        "name": "String"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileJson",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-restore-profile",
+      "result": {
+        "kind": "record",
+        "name": "LibraryMutation"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-set-active",
+      "result": {
+        "kind": "record",
+        "name": "LibraryMutation"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "root",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "profileId",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "rulesText",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "library-update-rules",
+      "result": {
+        "kind": "record",
+        "name": "LibraryMutation"
+      }
+    }
+  ],
+  "rvt-protocol": 1,
+  "states": []
+}
