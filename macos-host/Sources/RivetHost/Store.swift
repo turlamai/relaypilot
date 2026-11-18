@@ -142,10 +142,17 @@ final class RelayPilotStore: ObservableObject {
     var libraryRoot: URL
 
     init() {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        libraryRoot = support
-            .appendingPathComponent(RivetGeneratedConfig.identifier, isDirectory: true)
-            .appendingPathComponent("library", isDirectory: true)
+        if let override = ProcessInfo.processInfo.environment["RELAYPILOT_LIBRARY_ROOT"],
+           !override.isEmpty {
+            // Scriptable/acceptance override: keeps journeys isolated from
+            // the user's real library.
+            libraryRoot = URL(fileURLWithPath: override, isDirectory: true)
+        } else {
+            let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            libraryRoot = support
+                .appendingPathComponent(RivetGeneratedConfig.identifier, isDirectory: true)
+                .appendingPathComponent("library", isDirectory: true)
+        }
         theme = defaults.string(forKey: "relaypilot-theme") ?? "system"
         redact = defaults.object(forKey: "relaypilot-redact") as? Bool ?? true
         savedTargets = defaults.stringArray(forKey: "relaypilot-saved-targets") ?? []
