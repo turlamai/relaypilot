@@ -35,6 +35,14 @@
 #include "GeneratedBackend.hpp"
 #include "GeneratedI18n.hpp"
 
+// GTK's G_CALLBACK is a single-argument macro: any bare comma inside a
+// multi-line lambda body splits it into several arguments. A variadic
+// redefinition passes the whole expression through untouched.
+#ifdef G_CALLBACK
+#undef G_CALLBACK
+#endif
+#define G_CALLBACK(...) ((GCallback)(__VA_ARGS__))
+
 namespace fs = std::filesystem;
 
 namespace {
