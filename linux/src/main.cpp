@@ -42,21 +42,7 @@
 #undef G_CALLBACK
 #endif
 #define G_CALLBACK(...) ((GCallback)(__VA_ARGS__))
-#ifdef g_signal_connect
-#undef g_signal_connect
-#endif
-#define g_signal_connect(instance, detailed_signal, ...) \
-    relaypilot_connect_data((instance), (detailed_signal), __VA_ARGS__, \
-                            nullptr, static_cast<GConnectFlags>(0))
-#ifdef g_signal_connect_data
-#undef g_signal_connect_data
-#endif
-template <typename... Args>
-static auto relaypilot_connect_data(Args&&... args) {
-  return (g_signal_connect_data)(std::forward<Args>(args)...);
-}
-#define g_signal_connect_data(...) \
-    relaypilot_connect_data(__VA_ARGS__)
+
 
 // GTK's G_CALLBACK / g_signal_connect* are fixed-arity macros: any bare
 // comma inside a multi-line lambda body splits them into extra arguments.
@@ -1297,7 +1283,7 @@ struct ImportDialogCtx {
   GtkWidget* stageBox;
   GtkEntry* nameEntry;
   GtkTextView* textArea;
-  GtkWidget* errorLabel;
+  GtkLabel* errorLabel;
   ImportFlow flow;
   std::function<void()> refreshStage;
 };
@@ -1433,7 +1419,7 @@ void render_import_stage() {
     gtk_widget_add_css_class(error, "rp-error");
     gtk_label_set_wrap(GTK_LABEL(error), TRUE);
     gtk_box_append(GTK_BOX(ctx->stageBox), error);
-    ctx->errorLabel = error;
+    ctx->errorLabel = GTK_LABEL(error);
     if (g_state.importFlow.has_value() && !g_state.importFlow->text.empty()) {
       // keep error text if a failed preview stored one
     }
@@ -1471,7 +1457,7 @@ void render_import_stage() {
                     gtk_widget_set_visible(g_import->errorLabel, TRUE);
                     return;
                   }
-                  auto preview = std::move(result.value);
+                  auto preview = std::move(*result.value);
                   if (preview.importableRules.empty()) {
                     gtk_label_set_text(g_import->errorLabel, tr("import.error.empty"));
                     gtk_widget_set_visible(g_import->errorLabel, TRUE);
@@ -1629,13 +1615,13 @@ void render_editor_stage() {
                     gtk_box_append(GTK_BOX(g_editor->issueBox), line);
                     return;
                   }
-                  if (!result.value.empty()) {
+                  if (!result.value->empty()) {
                     for (auto* child = gtk_widget_get_first_child(g_editor->issueBox);
                          child != nullptr;
                          child = gtk_widget_get_first_child(g_editor->issueBox)) {
                       gtk_box_remove(GTK_BOX(g_editor->issueBox), child);
                     }
-                    for (auto const& issue : result.value) {
+                    for (auto const& issue : *result.value) {
                       auto* line = gtk_label_new(("· " + issue.detail).c_str());
                       gtk_label_set_xalign(GTK_LABEL(line), 0.0f);
                       gtk_label_set_wrap(GTK_LABEL(line), TRUE);
@@ -1754,7 +1740,7 @@ void open_editor_dialog(rivet_app::LibraryEntry const& entry) {
   auto* textArea = GTK_TEXT_VIEW(gtk_text_view_new());
   gtk_text_view_set_wrap_mode(textArea, GTK_WRAP_WORD_CHAR);
   EditorDialogCtx* ctx = new EditorDialogCtx{
-      dialog, stageBox, textArea, nullptr, nullptr, false,
+      dialog, stageBox, textArea, nullptr, false,
       EditorFlow{entry.id, entry.name, entry.id == g_state.snapshot.activeProfileId,
                  rules},
       nullptr};
