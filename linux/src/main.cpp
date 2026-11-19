@@ -46,7 +46,8 @@
 #undef g_signal_connect
 #endif
 #define g_signal_connect(instance, detailed_signal, ...) \
-    g_signal_connect_data((instance), (detailed_signal), __VA_ARGS__)
+    relaypilot_connect_data((instance), (detailed_signal), __VA_ARGS__, \
+                            nullptr, static_cast<GConnectFlags>(0))
 #ifdef g_signal_connect_data
 #undef g_signal_connect_data
 #endif
@@ -246,7 +247,7 @@ enum class Page { overview = 0, trace = 1, profiles = 2, settings = 3 };
 struct ImportFlow {
   std::string name;
   std::string text;
-  rivet_app::ImportPreview preview;
+  std::optional<rivet_app::ImportPreview> preview;
   bool acknowledged = false;
 };
 
@@ -298,7 +299,7 @@ struct Widgets {
 
   // Trace.
   GtkEntry* targetEntry = nullptr;
-  GtkWidget* traceError = nullptr;
+  GtkLabel* traceError = nullptr;
   GtkButton* inspectButton = nullptr;
   GtkWidget* resultBox = nullptr;
   GtkLabel* resultTarget = nullptr;
@@ -1161,7 +1162,7 @@ void render_profile_detail() {
         auto* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
         gtk_widget_add_css_class(row, "rp-rule-row");
         auto* number = gtk_label_new(
-            (index < 10 ? "0" : "") + std::to_string(index));
+            (std::string(index < 10 ? "0" : "") + std::to_string(index)).c_str());
         gtk_widget_add_css_class(number, "rp-meta");
         gtk_widget_add_css_class(number, "rp-mono");
         auto* label = gtk_label_new(rule.c_str());
