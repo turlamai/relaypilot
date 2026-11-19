@@ -1993,6 +1993,221 @@ void open_patch_dialog(std::string const& target) {
 // Page construction
 // ---------------------------------------------------------------------------
 
+char const* page_id(Page page) {
+  switch (page) {
+    case Page::overview: return "overview";
+    case Page::trace: return "trace";
+    case Page::profiles: return "profiles";
+    case Page::settings: return "settings";
+  }
+  return "overview";
+}
+
+void session_strings(char const** title, char const** sub) {
+  switch (g_state.phase) {
+    case SessionPhase::running:
+      *title = tr("session.running");
+      *sub = tr("session.running.sub");
+      break;
+    case SessionPhase::starting:
+      *title = tr("session.starting");
+      *sub = tr("session.starting.sub");
+      break;
+    case SessionPhase::idle:
+      *title = tr("session.idle");
+      *sub = tr("session.idle.sub");
+      break;
+  }
+}
+
+GtkWidget* make_action_row(char const* title, char const* hint,
+                           char const* actionLabel,
+                           std::string const& profileId,
+                           std::string const& target) {
+  auto* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+  auto* symbol = gtk_label_new("!");
+  gtk_widget_add_css_class(symbol, "rp-issue-symbol");
+  gtk_box_append(GTK_BOX(row), symbol);
+  auto* field = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+  auto* titleLabel = gtk_label_new(title);
+  gtk_label_set_xalign(GTK_LABEL(titleLabel), 0.0f);
+  gtk_widget_add_css_class(titleLabel, "rp-section");
+  auto* hintLabel = gtk_label_new(hint);
+  gtk_label_set_xalign(GTK_LABEL(hintLabel), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(hintLabel), TRUE);
+  gtk_widget_add_css_class(hintLabel, "rp-subtitle");
+  gtk_box_append(GTK_BOX(field), titleLabel);
+  gtk_box_append(GTK_BOX(field), hintLabel);
+  gtk_box_append(GTK_BOX(row), field);
+  auto* action = gtk_button_new_with_label(actionLabel);
+  gtk_widget_set_valign(action, GTK_ALIGN_CENTER);
+  g_object_set_data_full(G_OBJECT(action), "profile-id",
+                         g_strdup(profileId.c_str()), g_free);
+  g_object_set_data_full(G_OBJECT(action), "target",
+                         g_strdup(target.c_str()), g_free);
+  g_signal_connect_data(
+      action, "clicked",
+      G_CALLBACK(+[](GtkButton* button, gpointer) {
+        auto* profileId = static_cast<std::string*>(
+            g_object_get_data(G_OBJECT(button), "profile-id"));
+        auto* target = static_cast<std::string*>(
+            g_object_get_data(G_OBJECT(button), "target"));
+        if (profileId != nullptr && *profileId != "") {
+          g_state.selectedProfileId = *profileId;
+          show_page(2);
+          render_profile_detail();
+        } else if (target != nullptr && *target != "") {
+          show_page(1);
+          gtk_editable_set_text(GTK_EDITABLE(w.targetEntry), target->c_str());
+          inspect_route(*target);
+        }
+      }),
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
+  return row;
+}
+
+void clear_children(GtkWidget* box) {
+  for (auto* child = gtk_widget_get_first_child(box); child != nullptr;
+       child = gtk_widget_get_first_child(box)) {
+    gtk_box_remove(GTK_BOX(box), child);
+  }
+}
+
+void update_overview() {
+  char const* title = nullptr;
+  char const* sub = nullptr;
+  session_strings(&title, &sub);
+  gtk_label_set_text(w.sessionTitle, title);
+  gtk_label_set_text(w.sessionSub, sub);
+  gtk_button_set_label(
+      w.sessionButton,
+      g_state.phase == SessionPhase::running
+          ? tr("session.stop")
+          : (g_state.phase == SessionPhase::starting ? tr("session.starting.button")
+                                                     : tr("session.start")));
+  gtk_widget_set_sensitive(GTK_WIDGET(w.sessionButton),
+                           g_state.phase != SessionPhase::starting);
+  GtkStyleContext* emblemContext =
+      gtk_widget_get_style_context(GTK_WIDGET(w.emblem));
+  if (g_state.phase == SessionPhase::running) {
+    gtk_style_context_add_class(emblemContext, "rp-emblem-running");
+  } else {
+    gtk_style_context_remove_class(emblemContext, "rp-emblem-running");
+  }
+  gtk_image_set_from_icon_name(GTK_IMAGE(w.emblemIcon),
+                               g_state.phase == SessionPhase::running
+                                   ? "object-select-symbolic"
+                                   : "system-shutdown-symbolic");
+
+  auto* entry = active_entry();
+  gtk_label_set_text(w.activeProfile,
+                     entry != nullptr ? entry->name.c_str() : "—");
+  gtk_label_set_text(w.defaultRoute, default_route_name().c_str());
+  gtk_label_set_text(w.ruleCount,
+                     (std::string(std::to_string(entry != nullptr
+                                             ? entry->ruleCount
+                                             : 0)) +
+                      std::string(" ") + tr("fact.rulesCount"))
+                         .c_str());
+  set_badge(w.statusBadge,
+            entry != nullptr && entry->status == "valid" ? "rp-badge-ok"
+                                                         : "rp-badge-error",
+            entry != nullptr ? (entry->status == "valid"
+                                    ? tr("fact.status.valid")
+                                    : tr("fact.status.invalid"))
+                             : tr("fact.status.invalid"));
+
+  auto invalid = pending_profile_ids();
+  auto mismatched = pending_mismatch_targets();
+  bool clear = invalid.empty() && mismatched.empty();
+  gtk_widget_set_visible(GTK_WIDGET(w.pendingClear), clear);
+  gtk_widget_set_visible(GTK_WIDGET(w.pendingList), !clear);
+  set_badge(w.pendingBadge, clear ? "rp-badge-ok" : "rp-badge-warn",
+            clear ? tr("pending.clear")
+                  : std::string(std::to_string(invalid.size() +
+                                               mismatched.size()) +
+                                " " + tr("pending.count"))
+                        .c_str());
+  clear_children(GTK_WIDGET(w.pendingList));
+  for (auto const& id : invalid) {
+    auto* item = entry_by_id(id);
+    std::string hint = item != nullptr && !item->issues.empty()
+                           ? item->issues.front().detail
+                           : tr("pending.invalidHint");
+    gtk_box_append(GTK_BOX(w.pendingList),
+                   make_action_row(item != nullptr ? item->name.c_str() : id.c_str(),
+                                   hint.c_str(), tr("pending.goProfile"), id, ""));
+  }
+  for (auto const& target : mismatched) {
+    auto expected = g_state.expectations[target];
+    auto decision = g_state.routeCache.find(target);
+    std::string hint = trf("pending.mismatchHint",
+                           policy_name(expected) + " / " +
+                               policy_name(decision->second.policy));
+    gtk_box_append(GTK_BOX(w.pendingList),
+                   make_action_row(target.c_str(), hint.c_str(),
+                                   tr("pending.viewDiff"), "", target));
+  }
+
+  // Saved targets.
+  clear_children(GTK_WIDGET(w.targetsList));
+  gtk_widget_set_visible(GTK_WIDGET(w.targetsEmpty), g_state.savedTargets.empty());
+  gtk_widget_set_visible(GTK_WIDGET(w.targetsList),
+                         !g_state.savedTargets.empty());
+  for (auto const& target : g_state.savedTargets) {
+    auto decision = g_state.routeCache.find(target);
+    std::string exit = decision != g_state.routeCache.end()
+                           ? decision->second.outbound
+                           : "—";
+    std::string suffix;
+    if (g_state.expectations.count(target) == 0) {
+      suffix = tr("target.noExpectation");
+    } else if (decision != g_state.routeCache.end() &&
+               decision->second.policy != g_state.expectations[target]) {
+      suffix = tr("target.mismatch");
+    } else {
+      suffix = tr("target.match");
+    }
+    gtk_box_append(GTK_BOX(w.targetsList),
+                   make_action_row(target.c_str(),
+                                   (exit + " · " + suffix).c_str(),
+                                   tr("qf.kind.target"), "", target));
+  }
+
+  // Activity.
+  clear_children(GTK_WIDGET(w.eventsList));
+  for (auto const& event : g_state.events) {
+    auto* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    auto* time = gtk_label_new(event.time.c_str());
+    gtk_widget_add_css_class(time, "rp-meta");
+    gtk_widget_add_css_class(time, "rp-mono");
+    auto* text = gtk_label_new(event.text.c_str());
+    gtk_label_set_xalign(GTK_LABEL(text), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(text), TRUE);
+    gtk_widget_add_css_class(text, "rp-subtitle");
+    gtk_box_append(GTK_BOX(row), time);
+    gtk_box_append(GTK_BOX(row), text);
+    gtk_box_append(GTK_BOX(w.eventsList), row);
+  }
+
+  // Footer.
+  char const* footerTitle = nullptr;
+  char const* footerSub = nullptr;
+  session_strings(&footerTitle, &footerSub);
+  (void)footerSub;
+  gtk_label_set_text(w.footerSession,
+                     std::string(footerTitle)
+                         .append(" · ")
+                         .append(entry != nullptr ? entry->name : "—")
+                         .c_str());
+  gtk_label_set_text(w.footerRules,
+                     (std::string(std::to_string(entry != nullptr
+                                             ? entry->ruleCount
+                                             : 0)) +
+                      std::string(" ") + tr("fact.rulesCount"))
+                         .c_str());
+}
+
 GtkWidget* build_overview() {
   auto* scroll = gtk_scrolled_window_new();
   auto* content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
