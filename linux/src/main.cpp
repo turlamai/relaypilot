@@ -126,7 +126,7 @@ void render_profile_list();
 void render_profile_detail();
 void refresh_library();
 void show_page(int page);
-char const* page_id(int page);
+char const* page_id(Page page);
 GtkWidget* make_badge(char const* cssClass, char const* text);
 void set_badge(GtkWidget* badge, char const* cssClass, char const* text);
 
@@ -2848,7 +2848,8 @@ void on_activate(GtkApplication* app, gpointer) {
 
   // Quick Find (⌘K → Ctrl+K): a simple controller dialog listing pages,
   // profiles, and saved targets.
-  auto* shortcut_controller = gtk_shortcut_controller_new();
+  auto* shortcut_controller =
+      GTK_SHORTCUT_CONTROLLER(gtk_shortcut_controller_new());
   auto* controller = GTK_EVENT_CONTROLLER(shortcut_controller);
   gtk_shortcut_controller_set_scope(shortcut_controller,
                                     GTK_SHORTCUT_SCOPE_LOCAL);
@@ -2913,7 +2914,6 @@ void on_shutdown(GApplication*, gpointer) {
 int main(int argc, char** argv) {
   auto* app = gtk_application_new("ai.turinglambda.relaypilot",
                                   G_APPLICATION_DEFAULT_FLAGS);
-  g_app = app;
   g_signal_connect(app, "activate", G_CALLBACK(on_activate), nullptr);
   g_signal_connect(app, "shutdown", G_CALLBACK(on_shutdown), nullptr);
   int const status = g_application_run(G_APPLICATION(app), argc, argv);
