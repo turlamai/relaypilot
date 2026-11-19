@@ -268,7 +268,7 @@ struct EditorFlow {
 struct PatchFlow {
   std::string target;
   std::string policy = "DIRECT";
-  rivet_app::PatchPreview preview;
+  std::optional<rivet_app::PatchPreview> preview;
 };
 
 struct ActivityEvent {
@@ -502,7 +502,7 @@ void save_preferences() {
 void show_toast(std::string const& message, bool undoable) {
   gtk_label_set_text(w.toastLabel, message.c_str());
   gtk_widget_set_visible(w.toastUndo, undoable);
-  gtk_widget_set_visible(w.toastBox, TRUE);
+  gtk_widget_set_visible(GTK_WIDGET(w.toastBox), TRUE);
 }
 
 void add_event(std::string const& text) {
@@ -822,11 +822,11 @@ void inspect_route(std::string target) {
                  });
   if (!valid_domain(target)) {
     gtk_label_set_text(w.traceError, tr("trace.error.domain"));
-    gtk_widget_set_visible(w.traceError, TRUE);
+    gtk_widget_set_visible(GTK_WIDGET(w.traceError), TRUE);
     return;
   }
   g_state.traceError.clear();
-  gtk_widget_set_visible(w.traceError, FALSE);
+  gtk_widget_set_visible(GTK_WIDGET(w.traceError), FALSE);
   g_state.traceTarget = target;
   g_state.traceBusy = true;
   gtk_button_set_label(w.inspectButton, tr("trace.inspecting"));
@@ -1454,13 +1454,13 @@ void render_import_stage() {
                       message = e.what();
                     }
                     gtk_label_set_text(g_import->errorLabel, message.c_str());
-                    gtk_widget_set_visible(g_import->errorLabel, TRUE);
+                    gtk_widget_set_visible(GTK_WIDGET(g_import->errorLabel), TRUE);
                     return;
                   }
                   auto preview = std::move(*result.value);
                   if (preview.importableRules.empty()) {
                     gtk_label_set_text(g_import->errorLabel, tr("import.error.empty"));
-                    gtk_widget_set_visible(g_import->errorLabel, TRUE);
+                    gtk_widget_set_visible(GTK_WIDGET(g_import->errorLabel), TRUE);
                     return;
                   }
                   g_import->flow.preview = std::move(preview);
@@ -1880,12 +1880,12 @@ void render_patch_stage() {
               [flow](rivet_app::Result<rivet_app::PatchPreview> result) {
                 dispatch_ui([result = std::move(result), flow]() mutable {
                   if (g_patch == nullptr) return;
-                  if (!result.succeeded() || result.value.sameAsCurrent) {
+                  if (!result.succeeded() || result.value->sameAsCurrent) {
                     show_toast(tr("patch.same"), false);
                     return;
                   }
                   g_patch->flow = flow;
-                  g_patch->flow.preview = std::move(result.value);
+                  g_patch->flow.preview = std::move(*result.value);
                   g_patch->refreshStage();
                 });
               });
@@ -2115,7 +2115,7 @@ GtkWidget* build_overview() {
   w.defaultRoute = GTK_LABEL(defaultRoute);
   w.ruleCount = GTK_LABEL(ruleCount);
   w.statusBadge = statusBadge;
-  w.pendingBadge = GTK_LABEL(pendingBadge);
+  w.pendingBadge = pendingBadge;
   w.pendingList = pendingList;
   w.pendingClear = pendingClear;
   w.targetsList = targetsList;
@@ -2667,7 +2667,7 @@ int on_backend_finished(gpointer) {
   if (!error.empty() || backend == nullptr) {
     gtk_label_set_text(w.toastLabel,
                        std::string("Backend error: ").append(error).c_str());
-    gtk_widget_set_visible(w.toastBox, TRUE);
+    gtk_widget_set_visible(GTK_WIDGET(w.toastBox), TRUE);
     return G_SOURCE_REMOVE;
   }
   g_state.backend = backend.release();
@@ -2834,13 +2834,13 @@ void on_activate(GtkApplication* app, gpointer) {
       toastUndo, "clicked",
       G_CALLBACK(+[](GtkButton*, gpointer) {
         undo_last_change();
-        gtk_widget_set_visible(w.toastBox, FALSE);
+        gtk_widget_set_visible(GTK_WIDGET(w.toastBox), FALSE);
       }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
   g_signal_connect_data(
       toastClose, "clicked",
       G_CALLBACK(+[](GtkButton*, gpointer) {
-        gtk_widget_set_visible(w.toastBox, FALSE);
+        gtk_widget_set_visible(GTK_WIDGET(w.toastBox), FALSE);
       }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
 
