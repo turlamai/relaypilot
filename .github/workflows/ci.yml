@@ -103,7 +103,7 @@ jobs:
       # RIVET_RACKET_* (rivet's own composite action) — the Linux host links
       # a static libracketcs, which the distro Racket does not ship.
       - name: Set up embeddable Racket CS
-        uses: turlamai/rivet/.github/actions/setup-embed-racket@${{ env.RIVET_PIN }}
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@642bad4bd5c4892a72f9c9d05d0368fb5a9cebac
       - name: Install pinned rivet
         run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
       - name: Build host
