@@ -58,6 +58,29 @@ static auto relaypilot_connect_data(Args&&... args) {
 #define g_signal_connect_data(...) \
     relaypilot_connect_data(__VA_ARGS__)
 
+// GTK's G_CALLBACK / g_signal_connect* are fixed-arity macros: any bare
+// comma inside a multi-line lambda body splits them into extra arguments.
+// Variadic redefinitions pass whole expressions through untouched.
+#ifdef G_CALLBACK
+#undef G_CALLBACK
+#endif
+#define G_CALLBACK(...) ((GCallback)(__VA_ARGS__))
+#ifdef g_signal_connect
+#undef g_signal_connect
+#endif
+#define g_signal_connect(instance, detailed_signal, ...) \
+    relaypilot_connect_data((instance), (detailed_signal), __VA_ARGS__, \
+                            nullptr, static_cast<GConnectFlags>(0))
+#ifdef g_signal_connect_data
+#undef g_signal_connect_data
+#endif
+template <typename... Args>
+static auto relaypilot_connect_data(Args&&... args) {
+  return (g_signal_connect_data)(std::forward<Args>(args)...);
+}
+#define g_signal_connect_data(...) \
+    relaypilot_connect_data(__VA_ARGS__)
+
 namespace fs = std::filesystem;
 
 namespace {
@@ -1494,21 +1517,7 @@ struct EditorDialogCtx {
   GtkWidget* dialog;
   GtkWidget* stageBox;
   GtkTextView* textArea;
-  GtkWidget* errorBox;
-  EditorFlow flow;
-  std::function<void()> refreshStage;
-};
-
-EditorDialogCtx* g_editor = nullptr;
-
-
-
-struct EditorDialogCtx {
-  GtkWidget* dialog;
-  GtkWidget* stageBox;
-  GtkTextView* textArea;
   GtkWidget* issueBox;
-  GtkWidget* confirmBox;
   bool stage = false;  // false = edit, true = confirm
   EditorFlow flow;
   std::function<void()> refreshStage;
