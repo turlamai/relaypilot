@@ -35,13 +35,29 @@
 #include "GeneratedBackend.hpp"
 #include "GeneratedI18n.hpp"
 
-// GTK's G_CALLBACK is a single-argument macro: any bare comma inside a
-// multi-line lambda body splits it into several arguments. A variadic
-// redefinition passes the whole expression through untouched.
+// GTK's G_CALLBACK / g_signal_connect* are fixed-arity macros: any bare
+// comma inside a multi-line lambda body splits them into extra arguments.
+// Variadic redefinitions pass whole expressions through untouched.
 #ifdef G_CALLBACK
 #undef G_CALLBACK
 #endif
 #define G_CALLBACK(...) ((GCallback)(__VA_ARGS__))
+#ifdef g_signal_connect
+#undef g_signal_connect
+#endif
+#define g_signal_connect(instance, detailed_signal, ...) \
+    g_signal_connect_data((instance), (detailed_signal), __VA_ARGS__)
+#ifdef g_signal_connect_data
+#undef g_signal_connect_data
+#endif
+// The real GTK function stays reachable through the parenthesized form; the
+// macro shadows it so comma-laden callbacks survive preprocessing.
+template <typename... Args>
+static auto relaypilot_connect_data(Args&&... args) {
+  return (g_signal_connect_data)(std::forward<Args>(args)...);
+}
+#define g_signal_connect_data(...) \
+    relaypilot_connect_data(__VA_ARGS__)
 
 namespace fs = std::filesystem;
 
@@ -230,7 +246,7 @@ enum class Page { overview = 0, trace = 1, profiles = 2, settings = 3 };
 struct ImportFlow {
   std::string name;
   std::string text;
-  std::optional<rivet_app::ImportPreview> preview;
+  rivet_app::ImportPreview preview;
   bool acknowledged = false;
 };
 
@@ -282,7 +298,7 @@ struct Widgets {
 
   // Trace.
   GtkEntry* targetEntry = nullptr;
-  GtkLabel* traceError = nullptr;
+  GtkWidget* traceError = nullptr;
   GtkButton* inspectButton = nullptr;
   GtkWidget* resultBox = nullptr;
   GtkLabel* resultTarget = nullptr;
@@ -1145,7 +1161,7 @@ void render_profile_detail() {
         auto* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
         gtk_widget_add_css_class(row, "rp-rule-row");
         auto* number = gtk_label_new(
-            (std::string(index < 10 ? "0" : "") + std::to_string(index)).c_str());
+            (index < 10 ? "0" : "") + std::to_string(index));
         gtk_widget_add_css_class(number, "rp-meta");
         gtk_widget_add_css_class(number, "rp-mono");
         auto* label = gtk_label_new(rule.c_str());
@@ -1217,7 +1233,7 @@ void add_dialog_actions(GtkWidget* dialog, GtkWidget* parent,
         gtk_window_destroy(GTK_WINDOW(ctx->dialog));
         delete ctx;
       }),
-      ctx, nullptr, static_cast<GConnectFlags>(0)));
+      ctx, nullptr, static_cast<GConnectFlags>(0));
   g_signal_connect_data(
       confirm, "clicked",
       G_CALLBACK((+[](GtkButton*, gpointer user_data) {
@@ -1226,7 +1242,7 @@ void add_dialog_actions(GtkWidget* dialog, GtkWidget* parent,
         gtk_window_destroy(GTK_WINDOW(ctx->dialog));
         delete ctx;
       }),
-      ctx, nullptr, static_cast<GConnectFlags>(0)));
+      ctx, nullptr, static_cast<GConnectFlags>(0));
 }
 
 // ---------------------------------------------------------------------------
@@ -1328,7 +1344,7 @@ void render_import_stage() {
             if (g_import != nullptr) g_import->flow.acknowledged =
                 gtk_check_button_get_active(button);
           }),
-          nullptr));
+          nullptr);
       gtk_box_append(GTK_BOX(ctx->stageBox), ack);
     }
     auto* note = gtk_label_new(tr("import.mappingNote"));
@@ -1354,7 +1370,7 @@ void render_import_stage() {
             g_import->refreshStage();
           }
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
     g_signal_connect_data(
         create, "clicked",
         G_CALLBACK((+[](GtkButton*, gpointer) {
@@ -1376,7 +1392,7 @@ void render_import_stage() {
                           });
               });
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
   } else {
     auto* nameLabel = make_field_label(tr("import.name"));
     gtk_box_append(GTK_BOX(ctx->stageBox), nameLabel);
@@ -1468,7 +1484,7 @@ void open_import_dialog() {
   g_signal_connect_data(
       dialog, "destroy",
       G_CALLBACK((+[](GtkWidget*, gpointer) { g_import = nullptr; }),
-      nullptr, nullptr, static_cast<GConnectFlags>(0)));
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
 }
 
 // ---------------------------------------------------------------------------
@@ -1562,7 +1578,7 @@ void render_editor_stage() {
             g_editor = nullptr;
           }
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
     auto onValidate = +[](GtkButton*, gpointer) {
       if (g_editor == nullptr) return;
       auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
@@ -1653,7 +1669,7 @@ void render_editor_stage() {
             g_editor->refreshStage();
           }
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
     auto onSave = +[](GtkButton*, gpointer) {
       if (g_editor == nullptr) return;
       auto flow = g_editor->flow;
@@ -1727,7 +1743,7 @@ void open_editor_dialog(rivet_app::LibraryEntry const& entry) {
       G_CALLBACK((+[](GtkWidget*, gpointer) {
         if (g_editor != nullptr) g_editor = nullptr;
       }),
-      nullptr, nullptr, static_cast<GConnectFlags>(0)));
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
 }
 
 // ---------------------------------------------------------------------------
@@ -1863,7 +1879,7 @@ void render_patch_stage() {
                 });
               });
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
   } else {
     auto const& preview = *ctx->flow.preview;
     auto* grid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 16);
@@ -1899,7 +1915,7 @@ void render_patch_stage() {
             g_patch->refreshStage();
           }
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
     g_signal_connect_data(
         apply, "clicked",
         G_CALLBACK((+[](GtkButton*, gpointer) {
@@ -1939,7 +1955,7 @@ void render_patch_stage() {
                 });
               });
         }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0)));
+        nullptr, nullptr, static_cast<GConnectFlags>(0));
   }
 }
 
@@ -1956,7 +1972,7 @@ void open_patch_dialog(std::string const& target) {
   g_signal_connect_data(
       dialog, "destroy",
       G_CALLBACK((+[](GtkWidget*, gpointer) { g_patch = nullptr; }),
-      nullptr, nullptr, static_cast<GConnectFlags>(0)));
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
 }
 
 // ---------------------------------------------------------------------------
@@ -2102,7 +2118,7 @@ GtkWidget* build_overview() {
                        open_session_confirm();
                      }
                    }),
-                   nullptr));
+                   nullptr);
   return scroll;
 }
 
@@ -2242,13 +2258,13 @@ GtkWidget* build_trace() {
                      auto* text = gtk_editable_get_text(GTK_EDITABLE(w.targetEntry));
                      inspect_route(text != nullptr ? text : "");
                    }),
-                   inspectPtr));
+                   inspectPtr);
   g_signal_connect(entry, "activate",
                    G_CALLBACK((+[](GtkEntry*, gpointer) {
                      auto* text = gtk_editable_get_text(GTK_EDITABLE(w.targetEntry));
                      inspect_route(text != nullptr ? text : "");
                    }),
-                   nullptr));
+                   nullptr);
   auto* copyButton = GTK_BUTTON(copy);
   g_signal_connect(copy, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer user_data) {
@@ -2272,7 +2288,7 @@ GtkWidget* build_trace() {
                      gdk_clipboard_set_text(clipboard, record.c_str());
                      show_toast(tr("trace.copied"), false);
                    }),
-                   copyButton));
+                   copyButton);
   g_signal_connect(saveTarget, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer) {
                      if (!g_state.traceTarget.empty() &&
@@ -2285,7 +2301,7 @@ GtkWidget* build_trace() {
                        save_target();
                      }
                    }),
-                   nullptr));
+                   nullptr);
   auto* pickerPtr = w.expectationPicker;
   g_signal_connect(picker, "changed",
                    G_CALLBACK((+[](GtkComboBox* box, gpointer user_data) {
@@ -2298,7 +2314,7 @@ GtkWidget* build_trace() {
                      g_free(selected);
                      set_expectation(g_state.traceTarget, value);
                    }),
-                   pickerPtr));
+                   pickerPtr);
   return scroll;
 }
 
@@ -2406,7 +2422,7 @@ GtkWidget* build_profiles() {
                        open_switch_confirm(*entry);
                      }
                    }),
-                   usePtr));
+                   usePtr);
   g_signal_connect(editButton, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
@@ -2414,7 +2430,7 @@ GtkWidget* build_profiles() {
                      auto* entry = entry_by_id(g_state.selectedProfileId);
                      if (entry != nullptr) open_editor_dialog(*entry);
                    }),
-                   editPtr));
+                   editPtr);
   g_signal_connect(deleteButton, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
@@ -2422,10 +2438,10 @@ GtkWidget* build_profiles() {
                      auto* entry = entry_by_id(g_state.selectedProfileId);
                      if (entry != nullptr) open_delete_confirm(*entry);
                    }),
-                   deletePtr));
+                   deletePtr);
   g_signal_connect(importButton, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer) { open_import_dialog(); }),
-                   nullptr));
+                   nullptr);
   g_signal_connect(search, "changed",
                    G_CALLBACK((+[](GtkEditable* editable, gpointer) {
                      auto* entry = GTK_ENTRY(editable);
@@ -2433,7 +2449,7 @@ GtkWidget* build_profiles() {
                      g_state.profilesQuery = text != nullptr ? text : "";
                      render_profile_list();
                    }),
-                   nullptr));
+                   nullptr);
   g_signal_connect(filter, "changed",
                    G_CALLBACK((+[](GtkComboBox* box, gpointer) {
                      auto* selected =
@@ -2444,7 +2460,7 @@ GtkWidget* build_profiles() {
                      }
                      render_profile_list();
                    }),
-                   nullptr));
+                   nullptr);
   return scroll;
 }
 
@@ -2527,13 +2543,13 @@ GtkWidget* build_settings() {
                      g_free(selected);
                      save_preferences();
                    }),
-                   nullptr));
+                   nullptr);
   g_signal_connect(redact, "toggled",
                    G_CALLBACK((+[](GtkCheckButton* button, gpointer) {
                      g_state.redact = gtk_check_button_get_active(button);
                      save_preferences();
                    }),
-                   nullptr));
+                   nullptr);
   g_signal_connect(exportButton, "clicked",
                    G_CALLBACK((+[](GtkButton*, gpointer) {
                      if (g_state.api == nullptr ||
@@ -2560,7 +2576,7 @@ GtkWidget* build_settings() {
                                      });
                          });
                    }),
-                   nullptr));
+                   nullptr);
   return scroll;
 }
 
@@ -2735,7 +2751,7 @@ void on_activate(GtkApplication* app, gpointer) {
           show_page(reinterpret_cast<ptrdiff_t>(user_data));
         }),
         reinterpret_cast<gpointer>(static_cast<ptrdiff_t>(page)), nullptr,
-        static_cast<GConnectFlags>(0)));
+        static_cast<GConnectFlags>(0));
   }
   auto* spacer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_vexpand(spacer, TRUE);
@@ -2809,13 +2825,13 @@ void on_activate(GtkApplication* app, gpointer) {
         undo_last_change();
         gtk_widget_set_visible(w.toastBox, FALSE);
       }),
-      nullptr, nullptr, static_cast<GConnectFlags>(0)));
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
   g_signal_connect_data(
       toastClose, "clicked",
       G_CALLBACK((+[](GtkButton*, gpointer) {
         gtk_widget_set_visible(w.toastBox, FALSE);
       }),
-      nullptr, nullptr, static_cast<GConnectFlags>(0)));
+      nullptr, nullptr, static_cast<GConnectFlags>(0));
 
   // Quick Find (⌘K → Ctrl+K): a simple controller dialog listing pages,
   // profiles, and saved targets.
@@ -2839,7 +2855,7 @@ void on_activate(GtkApplication* app, gpointer) {
                     show_page(reinterpret_cast<ptrdiff_t>(user_data));
                   }),
                   reinterpret_cast<gpointer>(static_cast<ptrdiff_t>(page)),
-                  nullptr, static_cast<GConnectFlags>(0)));
+                  nullptr, static_cast<GConnectFlags>(0));
               gtk_box_append(GTK_BOX(list), button);
             }
             for (auto const& entry : g_state.snapshot.profiles) {
@@ -2855,7 +2871,7 @@ void on_activate(GtkApplication* app, gpointer) {
                   }),
                   new std::string(id),
                   +[](gpointer data) { delete static_cast<std::string*>(data); },
-                  static_cast<GConnectFlags>(0)));
+                  static_cast<GConnectFlags>(0));
               gtk_box_append(GTK_BOX(list), button);
             }
             gtk_box_append(GTK_BOX(body), list);
