@@ -87,3 +87,32 @@ jobs:
           sleep 10
           pgrep -f "relaypilot.app" >/dev/null || { echo "::error::app did not stay running"; exit 1; }
           pkill -f "relaypilot.app" || true
+
+  linux-host:
+    name: Linux host build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build pkg-config \
+            libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
+            libsecret-1-dev libglib2.0-dev
+      # Builds and caches the embeddable Racket CS runtime and exports
+      # RIVET_RACKET_* (rivet's own composite action) — the Linux host links
+      # a static libracketcs, which the distro Racket does not ship.
+      - name: Set up embeddable Racket CS
+        uses: turlamai/rivet/.github/actions/setup-embed-racket@${{ env.RIVET_PIN }}
+      - name: Install pinned rivet
+        run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
+      - name: Build host
+        run: raco rivet build
+      - name: Headless boot smoke
+        run: |
+          sudo apt-get install -y xvfb
+          xvfb-run -a ./.rivet/stage/RivetHost &
+          APP_PID=$!
+          sleep 8
+          kill -0 $APP_PID
+          kill $APP_PID
