@@ -1,7 +1,5 @@
 # RelayPilot
 
-**Product:** [Website](https://relaypilot.jrtx.site/) · **Support:** [Issues & feedback](https://github.com/turlamai/relaypilot/issues) · [Development policy](https://github.com/turlamai/turlamai.github.io/blob/master/PORTFOLIO.md)
-
 RelayPilot is an architecture alpha for canonical network profiles and explainable routing. It currently provides a Racket source CLI and a supervised loopback engine slice; planned native hosts are not released clients.
 
 [![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
