@@ -126,6 +126,7 @@ void render_profile_list();
 void render_profile_detail();
 void refresh_library();
 void show_page(int page);
+char const* page_id(int page);
 GtkWidget* make_badge(char const* cssClass, char const* text);
 void set_badge(GtkWidget* badge, char const* cssClass, char const* text);
 
@@ -342,10 +343,11 @@ struct Widgets {
 struct AppState {
   rivet::linux_runtime::Backend* backend = nullptr;
   std::unique_ptr<rivet_app::API> api;
+  std::unique_ptr<rivet::linux_runtime::Backend> startup_backend;
   std::thread startup_thread;
   std::mutex startup_mutex;
   std::string startup_error;
-  bool shutting_down = false;
+  std::atomic_bool shutting_down{false};
 
   std::string libraryRoot;
   rivet_app::LibrarySnapshot snapshot;
@@ -2246,7 +2248,7 @@ GtkWidget* build_trace() {
   gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), content);
 
   w.targetEntry = GTK_ENTRY(entry);
-  w.traceError = error;
+  w.traceError = GTK_LABEL(error);
   w.inspectButton = GTK_BUTTON(inspect);
   w.resultBox = resultBox;
   w.resultTarget = GTK_LABEL(resultTarget);
@@ -2846,12 +2848,14 @@ void on_activate(GtkApplication* app, gpointer) {
 
   // Quick Find (⌘K → Ctrl+K): a simple controller dialog listing pages,
   // profiles, and saved targets.
-  auto* controller = gtk_shortcut_controller_new();
-  gtk_shortcut_controller_set_scope(controller, GTK_SHORTCUT_SCOPE_LOCAL);
+  auto* shortcut_controller = gtk_shortcut_controller_new();
+  auto* controller = GTK_EVENT_CONTROLLER(shortcut_controller);
+  gtk_shortcut_controller_set_scope(shortcut_controller,
+                                    GTK_SHORTCUT_SCOPE_LOCAL);
   auto* shortcut = gtk_shortcut_new(
       gtk_keyval_trigger_new(GDK_KEY_k, GDK_CONTROL_MASK),
       gtk_callback_action_new(
-          [](GtkWidget*, GVariant*, gpointer) {
+          +[](GtkWidget*, GVariant*, gpointer) -> int {
             auto* dialog = make_dialog(tr("qf.title"), tr("qf.subtitle"));
             auto* body = dialog_body(dialog);
             auto* list = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
@@ -2881,7 +2885,10 @@ void on_activate(GtkApplication* app, gpointer) {
                     render_profile_detail();
                   }),
                   new std::string(id),
-                  +[](gpointer data) { delete static_cast<std::string*>(data); },
+                  reinterpret_cast<GClosureNotify>(
+                      +[](gpointer data, GClosure*) {
+                        delete static_cast<std::string*>(data);
+                      }),
                   static_cast<GConnectFlags>(0));
               gtk_box_append(GTK_BOX(list), button);
             }
@@ -2890,8 +2897,8 @@ void on_activate(GtkApplication* app, gpointer) {
             return TRUE;
           },
           nullptr, nullptr));
-  gtk_shortcut_controller_add_shortcut(controller, shortcut);
-  gtk_widget_add_controller(GTK_WIDGET(window), GTK_EVENT_CONTROLLER(controller));
+  gtk_shortcut_controller_add_shortcut(shortcut_controller, shortcut);
+  gtk_widget_add_controller(GTK_WIDGET(window), controller);
 }
 
 void on_shutdown(GApplication*, gpointer) {
