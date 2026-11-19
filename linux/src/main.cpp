@@ -134,7 +134,7 @@ void on_result(rivet_app::Result<T> result, Then then) {
       if constexpr (std::is_void_v<T>) {
         then();
       } else {
-        then(result.value);
+        then(*result.value);
       }
     } catch (std::exception const& e) {
       show_toast(std::string(tr("common.error")) + e.what(), false);
@@ -732,7 +732,7 @@ void start_session_confirmed() {
             update_overview();
             return;
           }
-          g_state.sessionId = result.value.sessionId;
+          g_state.sessionId = result.value->sessionId;
           g_state.phase = SessionPhase::running;
           add_event(tr("session.started"));
           show_toast(tr("session.started"), false);
@@ -1204,7 +1204,7 @@ void add_dialog_actions(GtkWidget* dialog, GtkWidget* parent,
   auto* ctx = new Ctx{dialog, std::move(onConfirm)};
   g_signal_connect_data(
       cancel, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+      G_CALLBACK((+[](GtkButton*, gpointer user_data) {
         auto* ctx = static_cast<Ctx*>(user_data);
         gtk_window_destroy(GTK_WINDOW(ctx->dialog));
         delete ctx;
@@ -1212,7 +1212,7 @@ void add_dialog_actions(GtkWidget* dialog, GtkWidget* parent,
       ctx, nullptr, static_cast<GConnectFlags>(0));
   g_signal_connect_data(
       confirm, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+      G_CALLBACK((+[](GtkButton*, gpointer user_data) {
         auto* ctx = static_cast<Ctx*>(user_data);
         ctx->confirm();
         gtk_window_destroy(GTK_WINDOW(ctx->dialog));
@@ -1316,7 +1316,7 @@ void render_import_stage() {
       gtk_check_button_set_active(GTK_CHECK_BUTTON(ack), ctx->flow.acknowledged);
       g_signal_connect(
           ack, "toggled",
-          G_CALLBACK(+[](GtkCheckButton* button, gpointer) {
+          G_CALLBACK((+[](GtkCheckButton* button, gpointer) {
             if (g_import != nullptr) g_import->flow.acknowledged =
                 gtk_check_button_get_active(button);
           }),
@@ -1340,7 +1340,7 @@ void render_import_stage() {
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
     g_signal_connect_data(
         back, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_import != nullptr) {
             g_import->flow.preview.reset();
             g_import->refreshStage();
@@ -1349,7 +1349,7 @@ void render_import_stage() {
         nullptr, nullptr, static_cast<GConnectFlags>(0));
     g_signal_connect_data(
         create, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_import == nullptr) return;
           auto flow = g_import->flow;
           auto dialog = g_import->dialog;
@@ -1396,48 +1396,48 @@ void render_import_stage() {
     auto* review = gtk_button_new_with_label(tr("import.preview"));
     gtk_box_append(GTK_BOX(actions), review);
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
-    g_signal_connect_data(
-        review, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
-          if (g_import == nullptr) return;
-          auto* buffer = gtk_text_view_get_buffer(g_import->textArea);
-          GtkTextIter startIter, endIter;
-          gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
-          auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
-          std::string text = raw != nullptr ? raw : "";
-          g_free(raw);
-          g_import->flow.name = gtk_editable_get_text(GTK_EDITABLE(g_import->nameEntry));
-          g_import->flow.text = text;
-          g_state.importFlow = g_import->flow;
-          g_state.api->library_import_preview_async(
-              g_state.libraryRoot, g_import->flow.name, g_import->flow.text,
-              [](rivet_app::Result<rivet_app::ImportPreview> result) {
-                dispatch_ui([result = std::move(result)]() mutable {
-                  if (g_import == nullptr) return;
-                  if (!result.succeeded()) {
-                    std::string message = "unknown failure";
-                    try {
-                      std::rethrow_exception(result.error);
-                    } catch (std::exception const& e) {
-                      message = e.what();
-                    }
-                    gtk_label_set_text(g_import->errorLabel, message.c_str());
-                    gtk_widget_set_visible(g_import->errorLabel, TRUE);
-                    return;
-                  }
-                  auto preview = std::move(result.value);
-                  if (preview.importableRules.empty()) {
-                    gtk_label_set_text(g_import->errorLabel, tr("import.error.empty"));
-                    gtk_widget_set_visible(g_import->errorLabel, TRUE);
-                    return;
-                  }
-                  g_import->flow.preview = std::move(preview);
-                  g_import->flow.acknowledged = g_import->flow.preview->unsupported.empty();
-                  g_import->refreshStage();
-                });
-              });
-        }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0));
+    auto onReview = +[](GtkButton*, gpointer) {
+      if (g_import == nullptr) return;
+      auto* buffer = gtk_text_view_get_buffer(g_import->textArea);
+      GtkTextIter startIter, endIter;
+      gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
+      auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
+      std::string text = raw != nullptr ? raw : "";
+      g_free(raw);
+      g_import->flow.name = gtk_editable_get_text(GTK_EDITABLE(g_import->nameEntry));
+      g_import->flow.text = text;
+      g_state.importFlow = g_import->flow;
+      g_state.api->library_import_preview_async(
+          g_state.libraryRoot, g_import->flow.name, g_import->flow.text,
+          [](rivet_app::Result<rivet_app::ImportPreview> result) {
+            dispatch_ui([result = std::move(result)]() mutable {
+              if (g_import == nullptr) return;
+              if (!result.succeeded()) {
+                std::string message = "unknown failure";
+                try {
+                  std::rethrow_exception(result.error);
+                } catch (std::exception const& e) {
+                  message = e.what();
+                }
+                gtk_label_set_text(g_import->errorLabel, message.c_str());
+                gtk_widget_set_visible(g_import->errorLabel, TRUE);
+                return;
+              }
+              auto preview = std::move(result.value);
+              if (preview.importableRules.empty()) {
+                gtk_label_set_text(g_import->errorLabel, tr("import.error.empty"));
+                gtk_widget_set_visible(g_import->errorLabel, TRUE);
+                return;
+              }
+              g_import->flow.preview = std::move(preview);
+              g_import->flow.acknowledged =
+                  g_import->flow.preview->unsupported.empty();
+              g_import->refreshStage();
+            });
+          };
+    };
+    g_signal_connect_data(review, "clicked", G_CALLBACK(onReview), nullptr,
+                          nullptr, static_cast<GConnectFlags>(0));
   }
 }
 
@@ -1459,7 +1459,7 @@ void open_import_dialog() {
   gtk_window_present(GTK_WINDOW(dialog));
   g_signal_connect_data(
       dialog, "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer) { g_import = nullptr; }),
+      G_CALLBACK((+[](GtkWidget*, gpointer) { g_import = nullptr; }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
 }
 
@@ -1517,25 +1517,24 @@ void render_editor_stage() {
     auto* append = gtk_button_new_with_label(tr("editor.appendFinal"));
     gtk_widget_set_halign(append, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(ctx->stageBox), append);
-    g_signal_connect_data(
-        append, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
-          if (g_editor == nullptr) return;
-          auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
-          GtkTextIter startIter, endIter;
-          gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
-          auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
-          std::string text = raw != nullptr ? raw : "";
-          g_free(raw);
-          std::string trimmed = text;
-          while (!trimmed.empty() && (trimmed.back() == '\n' || trimmed.back() == ' '))
-            trimmed.pop_back();
-          gtk_text_buffer_set_text(
-              buffer, (trimmed.empty() ? "FINAL, DIRECT" : trimmed + "\nFINAL, DIRECT")
-                          .c_str(),
-              -1);
-        }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0));
+    auto onAppend = +[](GtkButton*, gpointer) {
+      if (g_editor == nullptr) return;
+      auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
+      GtkTextIter startIter, endIter;
+      gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
+      auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
+      std::string text = raw != nullptr ? raw : "";
+      g_free(raw);
+      std::string trimmed = text;
+      while (!trimmed.empty() && (trimmed.back() == '\n' || trimmed.back() == ' '))
+        trimmed.pop_back();
+      gtk_text_buffer_set_text(
+          buffer,
+          (trimmed.empty() ? "FINAL, DIRECT" : trimmed + "\nFINAL, DIRECT").c_str(),
+          -1);
+    };
+    g_signal_connect_data(append, "clicked", G_CALLBACK(onAppend), nullptr,
+                          nullptr, static_cast<GConnectFlags>(0));
     auto* issueBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_box_append(GTK_BOX(ctx->stageBox), issueBox);
     ctx->issueBox = issueBox;
@@ -1549,76 +1548,61 @@ void render_editor_stage() {
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
     g_signal_connect_data(
         cancel, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_editor != nullptr) {
             gtk_window_destroy(GTK_WINDOW(g_editor->dialog));
             g_editor = nullptr;
           }
         }),
         nullptr, nullptr, static_cast<GConnectFlags>(0));
-    g_signal_connect_data(
-        validate, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
-          if (g_editor == nullptr) return;
-          auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
-          GtkTextIter startIter, endIter;
-          gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
-          auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
-          std::string text = raw != nullptr ? raw : "";
-          g_free(raw);
-          g_state.api->library_validate_rules_async(
-              g_state.libraryRoot, g_editor->flow.profileId, text,
-              [](rivet_app::Result<std::vector<rivet_app::ProfileIssue>> result) {
-                dispatch_ui([result = std::move(result)]() mutable {
-                  if (g_editor == nullptr) return;
-                  auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
-                  GtkTextIter startIter, endIter;
-                  gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
-                  auto* raw =
-                      gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
-                  std::string text = raw != nullptr ? raw : "";
-                  g_free(raw);
-                  if (!result.succeeded()) {
-                    std::string message = "unknown failure";
-                    try {
-                      std::rethrow_exception(result.error);
-                    } catch (std::exception const& e) {
-                      message = e.what();
-                    }
-                    for (auto* child = gtk_widget_get_first_child(g_editor->issueBox);
-                         child != nullptr;
-                         child = gtk_widget_get_first_child(g_editor->issueBox)) {
-                      gtk_box_remove(GTK_BOX(g_editor->issueBox), child);
-                    }
-                    auto* line = gtk_label_new(("· " + message).c_str());
-                    gtk_label_set_wrap(GTK_LABEL(line), TRUE);
-                    gtk_label_set_xalign(GTK_LABEL(line), 0.0f);
-                    gtk_widget_add_css_class(line, "rp-error");
-                    gtk_box_append(GTK_BOX(g_editor->issueBox), line);
-                    return;
-                  }
-                  if (!result.value.empty()) {
-                    for (auto* child = gtk_widget_get_first_child(g_editor->issueBox);
-                         child != nullptr;
-                         child = gtk_widget_get_first_child(g_editor->issueBox)) {
-                      gtk_box_remove(GTK_BOX(g_editor->issueBox), child);
-                    }
-                    for (auto const& issue : result.value) {
-                      auto* line = gtk_label_new(("· " + issue.detail).c_str());
-                      gtk_label_set_xalign(GTK_LABEL(line), 0.0f);
-                      gtk_label_set_wrap(GTK_LABEL(line), TRUE);
-                      gtk_widget_add_css_class(line, "rp-error");
-                      gtk_box_append(GTK_BOX(g_editor->issueBox), line);
-                    }
-                    return;
-                  }
-                  g_editor->flow.originalText = text;
-                  g_editor->stage = true;
-                  g_editor->refreshStage();
-                });
-              });
-        }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0));
+    auto onValidate = +[](GtkButton*, gpointer) {
+      if (g_editor == nullptr) return;
+      auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
+      GtkTextIter startIter, endIter;
+      gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
+      auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
+      std::string text = raw != nullptr ? raw : "";
+      g_free(raw);
+      g_state.api->library_validate_rules_async(
+          g_state.libraryRoot, g_editor->flow.profileId, text,
+          [](rivet_app::Result<std::vector<rivet_app::ProfileIssue>> result) {
+            dispatch_ui([result = std::move(result)]() mutable {
+              if (g_editor == nullptr) return;
+              if (!result.succeeded()) {
+                std::string message = "unknown failure";
+                try {
+                  std::rethrow_exception(result.error);
+                } catch (std::exception const& e) {
+                  message = e.what();
+                }
+                gtk_label_set_text(GTK_LABEL(g_editor->issueBox),
+                                   ("· " + message).c_str());
+                return;
+              }
+              if (!result.value.empty()) {
+                for (auto const& issue : result.value) {
+                  auto* line = gtk_label_new(("· " + issue.detail).c_str());
+                  gtk_label_set_xalign(GTK_LABEL(line), 0.0f);
+                  gtk_label_set_wrap(GTK_LABEL(line), TRUE);
+                  gtk_widget_add_css_class(line, "rp-error");
+                  gtk_box_append(GTK_BOX(g_editor->issueBox), line);
+                }
+                return;
+              }
+              auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
+              GtkTextIter startIter, endIter;
+              gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
+              auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
+              std::string text = raw != nullptr ? raw : "";
+              g_free(raw);
+              g_editor->flow.originalText = text;
+              g_editor->stage = true;
+              g_editor->refreshStage();
+            });
+          };
+    };
+    g_signal_connect_data(validate, "clicked", G_CALLBACK(onValidate), nullptr,
+                          nullptr, static_cast<GConnectFlags>(0));
   } else {
     auto* subtitle = gtk_label_new(ctx->flow.isActive ? tr("editor.confirm.body.active")
                                                      : tr("editor.confirm.body.other"));
@@ -1655,42 +1639,41 @@ void render_editor_stage() {
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
     g_signal_connect_data(
         back, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_editor != nullptr) {
             g_editor->stage = false;
             g_editor->refreshStage();
           }
         }),
         nullptr, nullptr, static_cast<GConnectFlags>(0));
-    g_signal_connect_data(
-        save, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
-          if (g_editor == nullptr) return;
-          auto flow = g_editor->flow;
-          auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
-          GtkTextIter startIter, endIter;
-          gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
-          auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
-          std::string text = raw != nullptr ? raw : "";
-          g_free(raw);
-          auto dialog = g_editor->dialog;
-          capture_undo();
-          g_state.api->library_update_rules_async(
-              g_state.libraryRoot, flow.profileId, text,
-              [dialog](rivet_app::Result<rivet_app::LibraryMutation> result) {
-                dispatch_ui([result = std::move(result), dialog]() mutable {
-                  gtk_window_destroy(GTK_WINDOW(dialog));
-                  g_editor = nullptr;
-                  on_result(std::move(result),
-                            [](rivet_app::LibraryMutation const&) {
-                              add_event(tr("editor.saved"));
-                              show_toast(tr("editor.saved"), true);
-                              refresh_library();
-                            });
-                });
-              });
-        }),
-        nullptr, nullptr, static_cast<GConnectFlags>(0));
+    auto onSave = +[](GtkButton*, gpointer) {
+      if (g_editor == nullptr) return;
+      auto flow = g_editor->flow;
+      auto* buffer = gtk_text_view_get_buffer(g_editor->textArea);
+      GtkTextIter startIter, endIter;
+      gtk_text_buffer_get_bounds(buffer, &startIter, &endIter);
+      auto* raw = gtk_text_buffer_get_text(buffer, &startIter, &endIter, TRUE);
+      std::string text = raw != nullptr ? raw : "";
+      g_free(raw);
+      auto dialog = g_editor->dialog;
+      capture_undo();
+      g_state.api->library_update_rules_async(
+          g_state.libraryRoot, flow.profileId, text,
+          [dialog](rivet_app::Result<rivet_app::LibraryMutation> result) {
+            dispatch_ui([result = std::move(result), dialog]() mutable {
+              gtk_window_destroy(GTK_WINDOW(dialog));
+              g_editor = nullptr;
+              on_result(std::move(result),
+                        [](rivet_app::LibraryMutation const&) {
+                          add_event(tr("editor.saved"));
+                          show_toast(tr("editor.saved"), true);
+                          refresh_library();
+                        });
+            });
+          };
+    };
+    g_signal_connect_data(save, "clicked", G_CALLBACK(onSave), nullptr, nullptr,
+                          static_cast<GConnectFlags>(0));
   }
 }
 
@@ -1733,7 +1716,7 @@ void open_editor_dialog(rivet_app::LibraryEntry const& entry) {
   gtk_window_present(GTK_WINDOW(dialog));
   g_signal_connect_data(
       dialog, "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer) {
+      G_CALLBACK((+[](GtkWidget*, gpointer) {
         if (g_editor != nullptr) g_editor = nullptr;
       }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
@@ -1848,7 +1831,7 @@ void render_patch_stage() {
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
     g_signal_connect_data(
         preview, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_patch == nullptr) return;
           auto selected = gtk_combo_box_text_get_active_text(g_patch->policyPicker);
           if (selected == nullptr) return;
@@ -1902,7 +1885,7 @@ void render_patch_stage() {
     gtk_box_append(GTK_BOX(ctx->stageBox), actions);
     g_signal_connect_data(
         back, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_patch != nullptr) {
             g_patch->flow.preview.reset();
             g_patch->refreshStage();
@@ -1911,7 +1894,7 @@ void render_patch_stage() {
         nullptr, nullptr, static_cast<GConnectFlags>(0));
     g_signal_connect_data(
         apply, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer) {
+        G_CALLBACK((+[](GtkButton*, gpointer) {
           if (g_patch == nullptr) return;
           auto flow = g_patch->flow;
           auto dialog = g_patch->dialog;
@@ -1964,7 +1947,7 @@ void open_patch_dialog(std::string const& target) {
   gtk_window_present(GTK_WINDOW(dialog));
   g_signal_connect_data(
       dialog, "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer) { g_patch = nullptr; }),
+      G_CALLBACK((+[](GtkWidget*, gpointer) { g_patch = nullptr; }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
 }
 
@@ -2104,7 +2087,7 @@ GtkWidget* build_overview() {
   w.targetsEmpty = GTK_LABEL(targetsEmpty);
   w.eventsList = eventsList;
   g_signal_connect(sessionButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer) {
+                   G_CALLBACK((+[](GtkButton*, gpointer) {
                      if (g_state.phase == SessionPhase::running) {
                        stop_session();
                      } else if (g_state.phase == SessionPhase::idle) {
@@ -2245,7 +2228,7 @@ GtkWidget* build_trace() {
 
   auto* inspectPtr = w.inspectButton;
   g_signal_connect(inspect, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                   G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
                      (void)button;
                      auto* text = gtk_editable_get_text(GTK_EDITABLE(w.targetEntry));
@@ -2253,14 +2236,14 @@ GtkWidget* build_trace() {
                    }),
                    inspectPtr);
   g_signal_connect(entry, "activate",
-                   G_CALLBACK(+[](GtkEntry*, gpointer) {
+                   G_CALLBACK((+[](GtkEntry*, gpointer) {
                      auto* text = gtk_editable_get_text(GTK_EDITABLE(w.targetEntry));
                      inspect_route(text != nullptr ? text : "");
                    }),
                    nullptr);
   auto* copyButton = GTK_BUTTON(copy);
   g_signal_connect(copy, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                   G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
                      (void)button;
                      if (!g_state.traceHasResult) return;
@@ -2283,7 +2266,7 @@ GtkWidget* build_trace() {
                    }),
                    copyButton);
   g_signal_connect(saveTarget, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer) {
+                   G_CALLBACK((+[](GtkButton*, gpointer) {
                      if (!g_state.traceTarget.empty() &&
                          std::find(g_state.savedTargets.begin(),
                                    g_state.savedTargets.end(),
@@ -2297,7 +2280,7 @@ GtkWidget* build_trace() {
                    nullptr);
   auto* pickerPtr = w.expectationPicker;
   g_signal_connect(picker, "changed",
-                   G_CALLBACK(+[](GtkComboBox* box, gpointer user_data) {
+                   G_CALLBACK((+[](GtkComboBox* box, gpointer user_data) {
                      auto* picker = static_cast<GtkComboBoxText*>(user_data);
                      (void)picker;
                      auto* selected = gtk_combo_box_text_get_active_text(
@@ -2407,7 +2390,7 @@ GtkWidget* build_profiles() {
   auto* editPtr = editButton;
   auto* deletePtr = deleteButton;
   g_signal_connect(useButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                   G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
                      (void)button;
                      auto* entry = entry_by_id(g_state.selectedProfileId);
@@ -2417,7 +2400,7 @@ GtkWidget* build_profiles() {
                    }),
                    usePtr);
   g_signal_connect(editButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                   G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
                      (void)button;
                      auto* entry = entry_by_id(g_state.selectedProfileId);
@@ -2425,7 +2408,7 @@ GtkWidget* build_profiles() {
                    }),
                    editPtr);
   g_signal_connect(deleteButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                   G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                      auto* button = static_cast<GtkButton*>(user_data);
                      (void)button;
                      auto* entry = entry_by_id(g_state.selectedProfileId);
@@ -2433,10 +2416,10 @@ GtkWidget* build_profiles() {
                    }),
                    deletePtr);
   g_signal_connect(importButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer) { open_import_dialog(); }),
+                   G_CALLBACK((+[](GtkButton*, gpointer) { open_import_dialog(); }),
                    nullptr);
   g_signal_connect(search, "changed",
-                   G_CALLBACK(+[](GtkEditable* editable, gpointer) {
+                   G_CALLBACK((+[](GtkEditable* editable, gpointer) {
                      auto* entry = GTK_ENTRY(editable);
                      auto* text = gtk_editable_get_text(GTK_EDITABLE(entry));
                      g_state.profilesQuery = text != nullptr ? text : "";
@@ -2444,7 +2427,7 @@ GtkWidget* build_profiles() {
                    }),
                    nullptr);
   g_signal_connect(filter, "changed",
-                   G_CALLBACK(+[](GtkComboBox* box, gpointer) {
+                   G_CALLBACK((+[](GtkComboBox* box, gpointer) {
                      auto* selected =
                          gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(box));
                      if (selected != nullptr) {
@@ -2528,7 +2511,7 @@ GtkWidget* build_settings() {
   w.theme = theme;
   w.redact = GTK_TOGGLE_BUTTON(redact);
   g_signal_connect(theme, "changed",
-                   G_CALLBACK(+[](GtkComboBox* box, gpointer) {
+                   G_CALLBACK((+[](GtkComboBox* box, gpointer) {
                      auto* selected =
                          gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(box));
                      if (selected == nullptr) return;
@@ -2538,13 +2521,13 @@ GtkWidget* build_settings() {
                    }),
                    nullptr);
   g_signal_connect(redact, "toggled",
-                   G_CALLBACK(+[](GtkCheckButton* button, gpointer) {
+                   G_CALLBACK((+[](GtkCheckButton* button, gpointer) {
                      g_state.redact = gtk_check_button_get_active(button);
                      save_preferences();
                    }),
                    nullptr);
   g_signal_connect(exportButton, "clicked",
-                   G_CALLBACK(+[](GtkButton*, gpointer) {
+                   G_CALLBACK((+[](GtkButton*, gpointer) {
                      if (g_state.api == nullptr ||
                          g_state.activeProfileJson.empty() ||
                          g_state.traceTarget.empty()) {
@@ -2740,7 +2723,7 @@ void on_activate(GtkApplication* app, gpointer) {
     int page = i;
     g_signal_connect_data(
         button, "clicked",
-        G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+        G_CALLBACK((+[](GtkButton*, gpointer user_data) {
           show_page(reinterpret_cast<ptrdiff_t>(user_data));
         }),
         reinterpret_cast<gpointer>(static_cast<ptrdiff_t>(page)), nullptr,
@@ -2814,14 +2797,14 @@ void on_activate(GtkApplication* app, gpointer) {
 
   g_signal_connect_data(
       toastUndo, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer) {
+      G_CALLBACK((+[](GtkButton*, gpointer) {
         undo_last_change();
         gtk_widget_set_visible(w.toastBox, FALSE);
       }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
   g_signal_connect_data(
       toastClose, "clicked",
-      G_CALLBACK(+[](GtkButton*, gpointer) {
+      G_CALLBACK((+[](GtkButton*, gpointer) {
         gtk_widget_set_visible(w.toastBox, FALSE);
       }),
       nullptr, nullptr, static_cast<GConnectFlags>(0));
@@ -2844,7 +2827,7 @@ void on_activate(GtkApplication* app, gpointer) {
               int page = i;
               g_signal_connect_data(
                   button, "clicked",
-                  G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                  G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                     show_page(reinterpret_cast<ptrdiff_t>(user_data));
                   }),
                   reinterpret_cast<gpointer>(static_cast<ptrdiff_t>(page)),
@@ -2856,7 +2839,7 @@ void on_activate(GtkApplication* app, gpointer) {
               std::string id = entry.id;
               g_signal_connect_data(
                   button, "clicked",
-                  G_CALLBACK(+[](GtkButton*, gpointer user_data) {
+                  G_CALLBACK((+[](GtkButton*, gpointer user_data) {
                     auto* id = static_cast<std::string*>(user_data);
                     g_state.selectedProfileId = *id;
                     show_page(2);
