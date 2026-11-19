@@ -126,6 +126,7 @@ void render_profile_list();
 void render_profile_detail();
 void refresh_library();
 void show_page(int page);
+enum class Page;
 char const* page_id(Page page);
 GtkWidget* make_badge(char const* cssClass, char const* text);
 void set_badge(GtkWidget* badge, char const* cssClass, char const* text);
