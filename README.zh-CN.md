@@ -1,7 +1,5 @@
 # RelayPilot
 
-**产品：**[产品主页](https://relaypilot.jrtx.site/) · **支持：**[问题与反馈](https://github.com/turlamai/relaypilot/issues) · [当前交付策略](https://github.com/turlamai/turlamai.github.io/blob/master/PORTFOLIO.zh-CN.md)
-
 RelayPilot 是统一网络配置与可解释路由的架构 Alpha。目前提供 Racket 源码 CLI 和受监督的回环引擎纵切；规划中的原生宿主尚不是已发布客户端。
 
 [![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
