@@ -4,15 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="RelayPilot 本地路由工作空间：状态、预期对照与配置管理交互原型">
-<title>RelayPilot — 运行概览</title>
+<title>RelayPilot — 原型目录</title>
 <link rel="stylesheet" href="prototype/shared.css">
 <script defer src="prototype/app.js"></script>
 </head>
-<body data-page="connect">
-<div id="root"></div>
-<dialog id="modal" aria-labelledby="dialog-title"></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-<noscript>请启用 JavaScript 以体验 RelayPilot 的交互原型。</noscript>
+<body class="directory-surface" data-surface="directory">
+<div id="root"><main class="directory-main">
+<header class="directory-header"><div><span class="eyebrow">RelayPilot</span><h1>原型目录</h1><p class="muted">桌面管理与 iPhone 伴随端</p></div><div class="field"><label for="directory-theme">主题</label><select id="directory-theme"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></div></header>
+<section class="directory-group"><h2>桌面端</h2><p class="muted">v0.3 交互契约 · 配置与 Xray 进程位于桌面</p>
+<nav aria-label="桌面原型"><a href="prototype/connect.html">运行概览<span>会话启停与待处理事项</span></a><a href="prototype/trace.html">路由检查<span>预期对照、命中原因与修正</span></a><a href="prototype/profiles.html">配置库<span>导入、校验与规则编辑</span></a><a href="prototype/settings.html">设置<span>外观与诊断隐私</span></a></nav></section>
+<section class="directory-group"><h2>移动端</h2><p class="muted">390px iPhone 内容视图 · 桌面伴随端</p>
+<nav aria-label="移动原型"><a href="prototype/mobile-overview.html">运行概览<span>桌面离线、代理状态与启停</span></a><a href="prototype/mobile-trace.html">路由检查<span>输入目标与最近检查记录</span></a><a href="prototype/mobile-profiles.html">配置库<span>只读配置与导入校验状态</span></a><a href="prototype/mobile-settings.html">设置<span>主题、桌面连接与控制范围</span></a></nav>
+<details class="directory-scenarios"><summary>查看移动端状态样例</summary><p class="muted">仅用于原型评审。以下入口不连接真实桌面。</p><nav aria-label="移动端状态样例"><a href="prototype/mobile-overview.html?scenario=running">运行中</a><a href="prototype/mobile-overview.html?scenario=stopped">已停止</a><a href="prototype/mobile-overview.html?scenario=failed">桌面连接失败</a><a href="prototype/mobile-overview.html?scenario=proxy-failed">Xray 启动失败</a><a href="prototype/mobile-overview.html?scenario=process-unreachable">Xray 进程不可达</a><a href="prototype/mobile-overview.html?scenario=starting">启动进行中</a><a href="prototype/mobile-overview.html?scenario=stopping">停止进行中</a><a href="prototype/mobile-overview.html?scenario=invalid">配置校验失败</a></nav></details></section>
+<footer class="directory-footer"><a href="DESIGN.md">设计契约 DESIGN.md</a><p class="muted">所有视图为本地交互模拟，不改变系统网络。</p></footer>
+</main></div>
+<dialog id="modal" aria-labelledby="dialog-title"></dialog><div id="toast" class="toast" role="status" hidden></div>
 </body>
 </html>
