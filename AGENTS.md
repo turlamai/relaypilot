@@ -13,6 +13,15 @@
 - 行为边界与跨平台一致性以 `design/DESIGN.md` 的不变式与平台差异节为准。
 - 改界面先改原型再改实现（tlai-product）；动共享层（design/、shared/）先 issue 声明，同 commit 落契约。
 
+## Current owner decision — 2026-11-23 UI line: rivet → glaze (#13)
+
+RelayPilot's desktop UI is re-lined from rivet native hosts to **glaze** (system WebView + one web UI). Read `host/README.md` for the carrier and the slice plan. Rules while the re-line is in flight (S0–S5):
+
+- The Racket control plane (`racket/`), `rivet-schema.json`, the CLI and `shared/i18n` are **Keep**: no engine, schema or RPC changes ride the re-line.
+- The web UI is evolved from `design/prototype/` (the UI baseline); tokens single-source in `design/prototype/shared.css`, strings single-source in `shared/i18n`. Never commit copies into `host/web/`.
+- `host/main.rkt` `api` is the route surface; `glaze-schema.json` is its committed baseline (`raco glaze schema write` + `check`). Harness routes stay inert unless `RELAYPILOT_E2E=1`.
+- The three native legs (`macos-host/`, `windows/`, `linux/`) are stubs scheduled for retirement in S4 — do not add to them. The "Rivet boundary" section below still governs the engine side and stays in force for RVT1/embedding/runtime.
+
 ## Current owner decision — 2026-11-18 quality-first
 
 This product is in **non-commercial development**. The prior 2026-10/11 product pricing, trial, paid-feature, Free/Pro and family Permit/Commerce rollout decisions are canceled. Do not introduce checkout, subscriptions, activation, commercial entitlement, paid update windows or a paywall. Do not change source-license terms or release signing and identity verification. Prioritize product correctness, reliable native experience, recovery, bilingual README and truthful website claims. The [current family portfolio](https://github.com/turlamai/turlamai.github.io/blob/master/PORTFOLIO.md) governs every slice.

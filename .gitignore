@@ -17,3 +17,6 @@ windows/obj/
 windows/RivetHost/
 windows/x64/
 macos-host/.build/
+
+# glaze real-window evidence (CI artifacts carry it)
+.glaze/
