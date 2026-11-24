@@ -84,6 +84,10 @@
       "path": "/api/host/i18n"
     },
     {
+      "method": "GET",
+      "path": "/api/host/context"
+    },
+    {
       "method": "POST",
       "path": "/api/host/e2e"
     },
@@ -109,6 +113,15 @@
       {
         "errors": [],
         "name": "health",
+        "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostContext",
         "parameters": [],
         "result": {
           "kind": "scalar",

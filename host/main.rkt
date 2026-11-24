@@ -14,7 +14,12 @@
 ;; rivet-schema.json remains the single source of the RPC contract: the
 ;; bridge codec converts camelCase JSON DTOs to field-ordered wire values and
 ;; back, and scripts/check-rpc-surface.py gates this route surface against
-;; the schema. Product screens land in S2–S4.
+;; the schema.
+;;
+;; S2 (overview/connect + profiles): web/app.js is the product UI, evolved
+;; from design/prototype and driven only through these routes; api/host/context
+;; hands the page the per-user library root (single source, not an RPC input
+;; the user could mistype). Trace lands in S3, settings/tray in S4.
 ;;
 ;; Carrier decision (#13, declared on the issue): production runs glaze's
 ;; first-class HTTP adapter on 127.0.0.1 with a per-launch token; the native
@@ -158,6 +163,15 @@
    (hasheq 'zh (call-with-input-file i18n-zh-path read-json)
            'en (call-with-input-file i18n-en-path read-json))]
 
+  ;; Product context for the web UI: where the profile library lives (see
+  ;; library-root) and whether the harness gate is on.
+  [(GET "api/host/context" #:returns GValue)
+   (hostContext)
+   (hasheq 'libraryRoot (path->string (library-root))
+           'version app-version
+           'e2e (if (e2e-enabled?) "true" "false"))]
+
+
   ;; ---- acceptance harness gate (#13 S0/S1) ------------------------------
   ;; The probe page carries an in-page journey harness (?e2e=1) because
   ;; glaze exposes no JS injection into the webview. These routes are inert
@@ -177,10 +191,48 @@
    (or (unbox e2e-report-box) (hasheq 'phase "waiting"))]
   [(POST "api/host/e2e_reset" #:returns GBool)
    (e2eReset)
-   (when (e2e-enabled?) (set-box! e2e-report-box #f))
+   (when (e2e-enabled?) (set-box! e2e-report-box #f) (set-box! e2e-root-box #f))
    #t])
 
-(define api (append api-rpc api-host))
+;; ---- product context (#13 S2) ------------------------------------------
+;; The library root the product UI passes to every library RPC: an explicit
+;; override (scriptable runs, acceptance isolation), else the per-user app
+;; data dir for the engine identifier from rivet.rktd. Top-level so the
+;; runtime path and helpers stay outside the route macro.
+(define-runtime-path rivet-descriptor-path "../rivet.rktd")
+
+(define (descriptor-identifier)
+  ;; rivet.rktd is a hash datum; the identifier names the per-user data dir.
+  (with-handlers ([exn:fail? (lambda (_) "ai.turinglambda.relaypilot")])
+    (define descriptor (with-input-from-file rivet-descriptor-path read))
+    (hash-ref descriptor 'identifier)))
+
+(define (user-library-root)
+  (define override (getenv "RELAYPILOT_LIBRARY_ROOT"))
+  (cond
+    [(and override (positive? (string-length override))) (string->path override)]
+    [else
+     (define base
+       (cond
+         [(eq? (system-path-convention-type) 'windows)
+          (or (getenv "LOCALAPPDATA") (getenv "APPDATA") (find-system-path 'home-dir))]
+         [(eq? (system-type) 'macosx)
+          (build-path (find-system-path 'home-dir) "Library" "Application Support")]
+         [else
+          (or (and (getenv "XDG_DATA_HOME") (string->path (getenv "XDG_DATA_HOME")))
+              (build-path (find-system-path 'home-dir) ".local" "share"))]))
+     (build-path base (descriptor-identifier) "library")]))
+
+;; Journey fixture root: one disposable library per host process while the
+;; harness gate is on, so the product journey never touches a user library.
+(define e2e-root-box (box #f))
+(define (e2e-library-root!)
+  (unless (unbox e2e-root-box)
+    (set-box! e2e-root-box (make-temporary-file "relaypilot-e2e-~a" 'directory)))
+  (unbox e2e-root-box))
+
+(define (library-root)
+  (if (e2e-enabled?) (e2e-library-root!) (user-library-root)))
 
 (define-runtime-path i18n-zh-path "../shared/i18n/zh.json")
 (define-runtime-path i18n-en-path "../shared/i18n/en.json")
@@ -188,6 +240,8 @@
 ;; ---- harness gate state ---------------------------------------------------
 (define (e2e-enabled?) (equal? (getenv "RELAYPILOT_E2E") "1"))
 (define e2e-report-box (box #f))
+
+(define api (append api-rpc api-host))
 
 (define (host-e2e-report! payload)
   (when (e2e-enabled?) (set-box! e2e-report-box payload))
@@ -199,9 +253,9 @@
 
 (define (host-e2e-fixtures)
   (unless (e2e-enabled?) (bad-param "e2e fixtures: harness not enabled"))
-  (define root (make-temporary-file "relaypilot-e2e-~a"))
-  (delete-file root)
-  (make-directory root)
+  ;; The RPC probe journey gets its own disposable root (it asserts an empty
+  ;; library); the product journey uses library-root, which e2e_reset rotates.
+  (define root (make-temporary-file "relaypilot-e2e-~a" 'directory))
   (hasheq 'profileJson (file->string sample-profile-path)
           'libraryRoot (path->string root)))
 
