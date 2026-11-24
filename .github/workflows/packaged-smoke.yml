@@ -124,10 +124,17 @@ jobs:
       - name: Packaged product journey
         if: runner.os != 'Linux'
         shell: bash
+        # No `timeout` on the macOS runner: the program ends by itself (the
+        # journey has its own deadlines); this watcher is only the backstop.
         run: |
           mkdir -p .glaze
-          RELAYPILOT_SELFTEST=1 RELAYPILOT_SELFTEST_OUT="$PWD/.glaze/selftest.json" \
-            timeout "$SELFTEST_SECONDS" "$RELAYPILOT_EXE"
+          RELAYPILOT_SELFTEST=1 RELAYPILOT_SELFTEST_OUT="$PWD/.glaze/selftest.json" "$RELAYPILOT_EXE" &
+          pid=$!
+          ( sleep "$SELFTEST_SECONDS"; kill "$pid" 2>/dev/null ) &
+          watcher=$!
+          wait "$pid"; status=$?
+          kill "$watcher" 2>/dev/null
+          exit "$status"
       - name: Self-check report
         if: always()
         shell: bash
