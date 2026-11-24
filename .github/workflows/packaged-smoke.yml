@@ -29,6 +29,7 @@ env:
   WEBKIT_DISABLE_DMABUF_RENDERER: '1'
   SURVIVAL_SECONDS: '8'
   SELFTEST_SECONDS: '360'
+  RELAYPILOT_TRAY_NATIVE: '1'
 
 concurrency:
   group: packaged-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
@@ -73,11 +74,14 @@ jobs:
         run: |
           raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${GLAZE_RIVET_PIN}"
           raco pkg install --auto --no-docs "https://github.com/turlamai/glaze.git#${GLAZE_PIN}"
+      # libayatana-appindicator3 is the native tray backend's one missing
+      # dependency on the runners (glaze/tray/tray-linux.rkt); without it the
+      # carrier degrades to the inert stub and the tray is never exercised.
       - name: Linux webview runtime deps
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
-          sudo apt-get install -y -o DPkg::Lock::Timeout=120 -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 libgtk-3-0 libwebkit2gtk-4.1-0 xvfb dbus
+          sudo apt-get install -y -o DPkg::Lock::Timeout=120 -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 libgtk-3-0 libwebkit2gtk-4.1-0 xvfb dbus libayatana-appindicator3-1
       # Identity comes from racket/core/version.rkt (the release identity the
       # version gate checks), never from this file.
       - name: Build the package

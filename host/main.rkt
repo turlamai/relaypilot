@@ -568,6 +568,13 @@
           (cons 'tray-menu (and (member "show" ids) (member "quick-find" ids)
                                 (member "go:trace" ids) (member "quit" ids)
                                 active-item (eq? #t (hash-ref active-item 'checked #f))))
+          ;; RELAYPILOT_TRAY_NATIVE=1 (CI, all four runners): a platform that
+          ;; silently fell back to the inert stub is a failure, not a note.
+          (cons 'tray-backend
+                (if (equal? (getenv "RELAYPILOT_TRAY_NATIVE") "1")
+                    (and (hash-ref tray-before 'attached #f)
+                         (not (string=? (format "~a" (hash-ref tray-before 'backend "none")) "stub")))
+                    #t))
           (cons 'tray-route (selftest-tray-route!)))))
 
 (define (selftest-finish! verdict)
