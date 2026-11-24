@@ -1,9 +1,10 @@
-// RelayPilot carrier probe (#13). Boot smoke + RPC surface journey over the
+// RelayPilot carrier probe (#13 S0/S1). Boot smoke + RPC surface journey over the
 // loopback HTTP adapter. Journeys run only when BOTH ?e2e=1 and the host
 // gate (RELAYPILOT_E2E=1) are on; otherwise the page stays an idle boot
 // probe. Verdicts are reported to the host harness route as a typed report.
 "use strict";
 
+// Lives in probe.html; index.html is the product UI (app.js).
 const statusEl = document.getElementById("status");
 const stepsEl = document.getElementById("steps");
 const params = new URLSearchParams(location.search);
