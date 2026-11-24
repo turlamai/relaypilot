@@ -202,7 +202,8 @@ export async function runJourney(app) {
     await click('[data-action="start-session"]', dialog());
     await waitUntil(() => state.session !== "starting" && !state.busy);
     if (state.session === "running") {
-      assert(state.handle.inboundPort > 0, "inboundPort");
+      const port = state.handle.inboundPort;
+      assert(port > 0, "inboundPort");
       const label = text(".session-title");
       assert(label === t("session.running"), "label " + label);
       await sleep(2200);
@@ -210,7 +211,7 @@ export async function runJourney(app) {
       await click('[data-action="stop-session"]', dialog());
       await idle();
       assert(state.session === "idle", "session after stop");
-      return `running on ${state.handle ? state.handle.inboundPort : "?"} → stopped`;
+      return `running on loopback ${port} → stopped`;
     }
     assert(state.session === "idle", "session " + state.session);
     assert(text("#toast").includes(t("session.engineUnavailable")), "toast " + text("#toast"));
