@@ -11,9 +11,11 @@
          net/http-client
          net/url
          racket/file
+         racket/list
          racket/port
          racket/runtime-path
          racket/string
+         ffi/unsafe/atomic
          "main.rkt")
 
 (define-runtime-path evidence-dir "../.glaze/verify")
@@ -31,6 +33,7 @@
 (define verdicts '())
 (define report-box (box #f))
 (define product-box (box #f))
+(define tray-box (box #f))
 
 (define (api-post url path body)
   (define u (string->url url))
@@ -44,6 +47,23 @@
   (close-input-port port)
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (string->jsexpr text)))
+
+(define (api-get url path)
+  (define u (string->url url))
+  (define-values (status headers port)
+    (http-sendrecv (url-host u) path #:port (url-port u) #:method #"GET"))
+  (define text (port->string port))
+  (close-input-port port)
+  (with-handlers ([exn:fail? (lambda (_) #f)])
+    (string->jsexpr text)))
+
+;; Linux: saving the pixbuf runs the GLib main context on this thread; Racket
+;; 9.0 can leave atomic mode set after an iteration that dispatched callbacks,
+;; so it is dropped right after the capture (#13 S4).
+(define (capture! wv)
+  (define shot (webview-capture! wv))
+  (when (in-atomic-mode?) (end-atomic))
+  shot)
 
 (define (save-shot! shot name)
   (cond
@@ -84,6 +104,7 @@
   (run-app
    #:public-dir (assemble-public-dir)
    #:api api
+   #:events host-bus
    #:transport 'http
    #:api-token #f
    #:title "RelayPilot"
@@ -93,21 +114,40 @@
    #:on-ready
    (lambda (wv url)
      ;; On Windows the webview reports about:blank until the first navigation
-     ;; completes, so the url is asserted after the initial load.
-     (define loaded? (load-page! wv url "index.html"))
+     ;; completes, so the url is asserted after the initial load. ?events=0:
+     ;; the boot page must not open the event stream before this capture
+     ;; (glaze#165, Linux).
+     (define loaded? (load-page! wv url "index.html?events=0"))
      (define url-ok? (and (string? (webview-url wv)) (string-prefix? (webview-url wv) url)))
-     (define boot-shot (save-shot! (webview-capture! wv) "relaypilot-host-boot.png"))
+     (define boot-shot (save-shot! (capture! wv) "relaypilot-host-boot.png"))
 
      ;; ---- S1 RPC surface journey (probe page) ----
      (define report (begin (load-page! wv url "probe.html?e2e=1") (await-report url 180000)))
      (set-box! report-box report)
-     (define e2e-shot (save-shot! (webview-capture! wv) "relaypilot-host-e2e.png"))
+     (define e2e-shot (save-shot! (capture! wv) "relaypilot-host-e2e.png"))
 
      ;; ---- S2 product journey (real UI) ----
      (api-post url "/api/host/e2e_reset" (hasheq))
      (define product (begin (load-page! wv url "index.html?e2e=1") (await-report url 240000)))
      (set-box! product-box product)
-     (define product-shot (save-shot! (webview-capture! wv) "relaypilot-product-e2e.png"))
+     (define product-shot (save-shot! (capture! wv) "relaypilot-product-e2e.png"))
+
+     ;; ---- S4 carrier route: a tray menu pick made outside the page ----
+     ;; The host holds the menu the page last posted; invoking an item here
+     ;; exercises the real action (broadcast → SSE → the page's action path).
+     (define tray-before (api-get url "/api/host/e2e_tray"))
+     (set-box! tray-box tray-before)
+     (define (tray-view)
+       (api-post url "/api/host/e2e_tray_invoke" (hasheq 'id "go:trace"))
+       (let/ec return
+         (define deadline (+ (current-inexact-milliseconds) 20000))
+         (let loop ()
+           (define r (api-get url "/api/host/e2e_tray"))
+           (cond
+             [(and (hash? r) (equal? (hash-ref r 'view #f) "trace")) (return r)]
+             [(>= (current-inexact-milliseconds) deadline) (return r)]
+             [else (sleep 0.2) (loop)]))))
+     (define tray-invoked (equal? (hash-ref (tray-view) 'view #f) "trace"))
 
      (define (step-ok? rep id)
        (define s (hash-ref (hash-ref rep 'steps (hasheq)) (string->symbol id) #f))
@@ -133,8 +173,19 @@
                   (cons 'rpc-library-flow (step-ok? report "library-flow"))
                   (cons 'rpc-error-channel (step-ok? report "error-channel"))
                   (cons 'e2e-capture (and e2e-shot (> (file-size e2e-shot) 0))))
-            (report-ok? product 14)
+            (report-ok? product 16)
             (list (cons 'ui-boot (step-ok? product "boot"))
+                  (cons 'ui-settings (step-ok? product "settings"))
+                  (cons 'ui-tray-menu (step-ok? product "tray"))
+                  (cons 'tray-menu
+                        (let* ([ids (map (lambda (i) (hash-ref i 'id #f))
+                                         (hash-ref tray-before 'menu '()))]
+                               [active-item (findf (lambda (i) (string-prefix? (format "~a" (hash-ref i 'id "")) "profile:"))
+                                                   (hash-ref tray-before 'menu '()))])
+                          (and (member "show" ids) (member "quick-find" ids)
+                               (member "go:trace" ids) (member "quit" ids)
+                               active-item (eq? #t (hash-ref active-item 'checked #f)))))
+                  (cons 'tray-route (and tray-invoked #t))
                   (cons 'ui-import (step-ok? product "import"))
                   (cons 'ui-import-rejected (step-ok? product "import-rejected"))
                   (cons 'ui-saved-target (step-ok? product "saved-target"))
@@ -157,7 +208,8 @@
 (call-with-output-file (build-path evidence-dir "relaypilot-host-report.json")
   (lambda (out)
     (write-json (hasheq 'carrier (or (unbox report-box) (hasheq))
-                        'product (or (unbox product-box) (hasheq)))
+                        'product (or (unbox product-box) (hasheq))
+                        'tray (or (unbox tray-box) (hasheq)))
                 out)
     (newline out))
   #:exists 'truncate/replace)

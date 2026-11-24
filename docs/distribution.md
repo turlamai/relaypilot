@@ -18,10 +18,10 @@ this repository is a released VPN, TUN or system-wide network client
   [CHANGELOG](../CHANGELOG.md), not a shipped build
   ([SECURITY](../SECURITY.md)); the repo has no version tags and no
   GitHub Releases.
-- **The five host directories are planning placeholders.** `macos-host/`,
-  `windows/`, `linux/`, `apple/` and `android/` each contain only a
-  README describing the planned native host. They produce nothing
-  installable today and are not released clients.
+- **The rivet native host directories were retired** (2026-11-24, glaze
+  re-line). `macos-host/`, `windows/`, `linux/`, `apple/` and `android/` are
+  gone from the tree; the glaze carrier in `host/` is the only desktop host
+  and produces nothing installable before the S5 packaging slice either.
 - **No engine binary is bundled or redistributed.** CI and local
   verification download one checksum-pinned Xray release for
   configuration validation and loopback sessions only

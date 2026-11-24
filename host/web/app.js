@@ -25,6 +25,8 @@
     info: "M12 11v6 M12 7h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
     plus: "M12 5v14 M5 12h14",
     warning: "M12 3L2 21h20z M12 9v5 M12 17h.01",
+    settings: "M4 7h16 M4 17h16 M8 4v6 M16 14v6",
+    search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M16 16l5 5",
     search: "M20 20l-5-5 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
     copy: "M9 9h12v12H9z M15 5V3H3v12h2"
   };
@@ -82,6 +84,7 @@
     targets: [],
     expectations: {},     // domain -> expected policy id (comparison only)
     redact: true,          // diagnostic export hides the target + trace id
+    theme: "system",       // system | light | dark (html[data-theme])
     routes: {},             // domain -> RouteDecision | null
     events: [],
     undo: null,
@@ -95,15 +98,30 @@
       if (Array.isArray(saved.targets)) state.targets = saved.targets.filter((x) => typeof x === "string");
       if (saved.expectations && typeof saved.expectations === "object") state.expectations = saved.expectations;
       if (typeof saved.redact === "boolean") state.redact = saved.redact;
+      if (["system", "light", "dark"].includes(saved.theme)) state.theme = saved.theme;
     }
   } catch (_) { /* in-memory list remains available */ }
   function storePreferences() {
     if (e2e) return;
-    try { localStorage.setItem(PREF_KEY, JSON.stringify({ targets: state.targets, expectations: state.expectations, redact: state.redact })); } catch (_) { /* session only */ }
+    try { localStorage.setItem(PREF_KEY, JSON.stringify({ targets: state.targets, expectations: state.expectations, redact: state.redact, theme: state.theme })); } catch (_) { /* session only */ }
+  }
+  // Theme: system follows the OS while the window is open; the token sheet
+  // (shared.css) carries the light and dark sets behind html[data-theme].
+  function applyTheme() {
+    const dark = state.theme === "dark" || (state.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }
+  applyTheme();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  // Interface text follows the system language (single source: shared/i18n).
+  function applyLocale(i18n, locale) {
+    strings = i18n[locale] || i18n.zh || {};
+    document.documentElement.lang = locale === "en" ? "en" : "zh-CN";
   }
 
-  const names = { connect: "nav.overview", trace: "nav.trace", profiles: "nav.profiles" };
-  const navIcons = { connect: "grid", trace: "route", profiles: "file" };
+  const names = { connect: "nav.overview", trace: "nav.trace", profiles: "nav.profiles", settings: "nav.settings" };
+  const navIcons = { connect: "grid", trace: "route", profiles: "file", settings: "settings" };
+  const keyboard = /Mac|iPhone|iPad/.test(navigator.platform || "") ? "⌘ K" : "Ctrl K";
   const active = () => state.profiles.find((p) => p.id === state.activeId) || null;
   const selected = () => state.profiles.find((p) => p.id === state.selected) || null;
   const running = () => state.session === "running";
@@ -201,7 +219,7 @@
     const p = active();
     const footerLeft = `${esc(sessionName())}${p ? " · " + esc(p.name) : ""}`;
     const footerRight = state.root ? `${esc(t("overview.libraryPath"))}: ${esc(state.root)}` : "";
-    return `<div class="app"><aside class="sidebar"><div class="wordmark"><span class="mark">${icon("route")}</span>RelayPilot</div><nav class="nav" aria-label="主导航">${nav}</nav><div class="sidebar-bottom"><div class="local-note">${icon("shield")}<span>${esc(t("sidebarNote")).replace(/\n/g, "<br>")}</span></div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>${esc(t("workspace"))}</span><span aria-hidden="true">/</span><strong>${esc(t(names[state.view]))}</strong></div><div class="od-cluster">${state.undo ? `<button type="button" class="btn subtle" data-action="undo">${esc(t("topUndo"))}</button>` : ""}</div></header><div class="notice">${icon("info")}<span>${esc(t("banner"))}</span></div><div class="content">${content}</div><footer class="footer"><span>${footerLeft}</span><span>${footerRight}</span></footer></main></div>`;
+    return `<div class="app"><aside class="sidebar"><div class="wordmark"><span class="mark">${icon("route")}</span>RelayPilot</div><nav class="nav" aria-label="${esc(t("nav.label"))}">${nav}</nav><div class="sidebar-bottom"><div class="local-note">${icon("shield")}<span>${esc(t("sidebarNote")).replace(/\n/g, "<br>")}</span></div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>${esc(t("workspace"))}</span><span aria-hidden="true">/</span><strong>${esc(t(names[state.view]))}</strong></div><div class="od-cluster"><button type="button" class="btn subtle command-trigger" data-action="commands" aria-label="${esc(t("settings.quickfind"))}">${icon("search")}<span>${esc(t("settings.quickfind"))}</span><kbd>${keyboard}</kbd></button>${state.undo ? `<button type="button" class="btn subtle" data-action="undo">${esc(t("topUndo"))}</button>` : ""}</div></header><div class="notice">${icon("info")}<span>${esc(t("banner"))}</span></div><div class="content">${content}</div><footer class="footer"><span>${footerLeft}</span><span>${footerRight}</span></footer></main></div>`;
   }
   const sessionName = () => (running() ? t("session.running") : busy() ? t("session.starting") : t("session.idle"));
   const heading = (title, description, action = "") =>
@@ -362,8 +380,9 @@
     document.title = "RelayPilot — " + t(names[state.view]);
     root.innerHTML = shell(state.loadError
       ? `<div class="note error" role="alert">${icon("warning")}<div><strong>${esc(t("library.loadFailed", state.loadError))}</strong></div><button type="button" class="btn" data-action="retry">${esc(t("common.retry"))}</button></div>`
-      : state.root ? ({ connect: overview, trace: traceView, profiles: profiles })[state.view]() : `<p class="empty">${esc(t("common.loading"))}</p>`);
+      : state.root ? ({ connect: overview, trace: traceView, profiles: profiles, settings: settingsView })[state.view]() : `<p class="empty">${esc(t("common.loading"))}</p>`);
     if (focusId) { const el = $("#" + focusId, root); if (el) el.focus(); }
+    reportTrayState();
   }
   function renderResults() { const el = $("#profile-results", root); if (el) el.innerHTML = profileResults(); }
   function go(view) { state.view = view; render(); const h = $("h1", root); if (h) h.focus({ preventScroll: true }); }
@@ -586,8 +605,11 @@
     openDialog(esc(t("switch.title")), esc(running() ? t("switch.body.running") : t("switch.body.idle")),
       `<div class="diff"><div><h3>${esc(t("switch.from"))}</h3><p>${esc(a ? a.name : "—")}</p></div><div><h3>${esc(t("switch.to"))}</h3><p>${esc(p.name)}</p></div></div>${actions("confirm-profile", esc(t("switch.confirm")))}`);
   }
-  async function confirmProfileSwitch() {
-    const p = selected();
+  // Switching the active profile: one path for the library button and the
+  // tray menu. Runs inside run(), so refresh + one re-render follow.
+  async function activateProfile(id) {
+    const p = state.profiles.find((x) => x.id === id);
+    if (!p || p.status !== "valid" || p.id === state.activeId) return;
     const previous = state.activeId;
     await rpc("library-set-active", { root: state.root, profileId: p.id });
     state.undo = previous && previous !== p.id ? async () => { await rpc("library-set-active", { root: state.root, profileId: previous }); } : null;
@@ -647,7 +669,8 @@
       case "back-profile": { const draftText = edit.text; editProfile(); edit.text = draftText; $("#rules-source", modal).value = draftText; return; }
       case "save-profile": await run(saveProfile); return;
       case "use-profile": confirmSwitch(); return;
-      case "confirm-profile": await run(confirmProfileSwitch); return;
+      case "confirm-profile": { const id = selected() && selected().id; await run(() => activateProfile(id)); return; }
+      case "commands": commands(); return;
       case "delete-profile": deleteDialog(); return;
       case "confirm-delete": await run(confirmDelete); return;
       case "clear-filters": state.query = ""; state.filter = "all"; renderResults(); $("#profile-search", root).focus(); return;
@@ -656,8 +679,10 @@
   document.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b || b.disabled) return;
-    if (b.dataset.view) { go(b.dataset.view); return; }
+    if (b.dataset.view) { closeDialog(); go(b.dataset.view); return; }
     if (b.dataset.openProfile) { closeDialog(); openProfile(b.dataset.openProfile); return; }
+    if (b.dataset.commandTarget) { closeDialog(); state.view = "trace"; run(() => inspectTarget(b.dataset.commandTarget)); return; }
+    if (b.dataset.commandView) { closeDialog(); go(b.dataset.commandView); return; }
     if (b.dataset.profile) { state.selected = b.dataset.profile; renderResults(); loadDetail(b.dataset.profile); return; }
     if (b.dataset.action) { handle(b.dataset.action, b).catch(fail); }
   });
@@ -669,9 +694,11 @@
   document.addEventListener("input", (e) => {
     if (e.target.id === "target") trace.input = e.target.value;
     if (e.target.id === "profile-search") { state.query = e.target.value; renderResults(); $("#profile-search", root).focus(); }
+    if (e.target.id === "command-search") { commandQuery = e.target.value; renderCommands(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "profile-filter") { state.filter = e.target.value; renderResults(); $("#profile-filter", root).focus(); }
+    if (e.target.id === "theme") { state.theme = e.target.value; storePreferences(); applyTheme(); }
     if (e.target.id === "import-ack") { const b = $('[data-action="confirm-import"]', modal); if (b) b.disabled = !e.target.checked; }
     if (e.target.id === "expected-policy") {
       const value = e.target.value;
@@ -682,21 +709,130 @@
     }
   });
 
+  // ---- settings (#13 S4) ----------------------------------------------------
+  const badge = (textValue, type = "") => `<span class="badge ${type}">${icon(type === "ok" ? "check" : "info")}${esc(textValue)}</span>`;
+  const options = (pairs, current) => pairs.map(([value, key]) => `<option value="${value}" ${current === value ? "selected" : ""}>${esc(t(key))}</option>`).join("");
+  function settingsView() {
+    const canExport = Boolean(trace.target && state.activeRaw);
+    return heading(esc(t("nav.settings")), esc(t("settings.subtitle"))) +
+      `<section class="settings-group"><h2>${esc(t("settings.appearance"))}</h2><div class="settings-row"><div class="od-field"><label for="theme"><strong>${esc(t("settings.theme"))}</strong><span>${esc(t("settings.theme.desc"))}</span></div><select id="theme">${options([["system", "theme.system"], ["light", "theme.light"], ["dark", "theme.dark"]], state.theme)}</select></div></section>` +
+      `<section class="settings-group"><h2>${esc(t("settings.privacy"))}</h2><div class="settings-row"><div class="od-field od-fill"><strong id="redact-label">${esc(t("settings.redact"))}</strong><span>${esc(t("settings.redact.desc"))}</span></div><button type="button" class="switch" role="switch" aria-checked="${state.redact}" aria-labelledby="redact-label" data-action="redact"><span>${esc(t(state.redact ? "switch.on" : "switch.off"))}</span>${icon(state.redact ? "check" : "close")}</button></div><div class="settings-row"><div class="od-field od-fill"><strong>${esc(t("settings.export"))}</strong><span>${esc(t(canExport ? "settings.export.desc" : "settings.export.none"))}</span></div><button type="button" class="btn" data-action="export" ${canExport ? "" : "disabled"}>${esc(t("settings.export.button"))}</button></div></section>` +
+      `<section class="settings-group"><h2>${esc(t("settings.efficiency"))}</h2><div class="settings-row"><div class="od-field"><strong>${esc(t("settings.quickfind"))}</strong><span>${esc(t("settings.quickfind.desc"))}</span></div><button type="button" class="btn" data-action="commands">${icon("search")}${esc(t("settings.quickfind"))} <kbd>${keyboard}</kbd></button></div><div class="settings-row"><div class="od-field"><strong>${esc(t("settings.keyboard"))}</strong><span>${esc(t("settings.keyboard.desc"))}</span></div></div></section>` +
+      `<section class="settings-group"><h2>${esc(t("settings.protection"))}</h2><div class="settings-row"><div class="od-field"><strong>${esc(t("settings.previewGuard"))}</strong><span>${esc(t("settings.previewGuard.desc"))}</span></div>${badge(t("settings.previewGuard.value"), "ok")}</div><div class="settings-row"><div class="od-field"><strong>${esc(t("settings.ai"))}</strong><span>${esc(t("settings.ai.desc"))}</span></div>${badge(t("settings.ai.value"))}</div></section>` +
+      `<div class="note">${icon("info")}<span>${esc(t("settings.note"))}</span></div>`;
+  }
+
+  // ---- quick find -----------------------------------------------------------
+  // Pages, profiles and saved targets in one list; arrows move between the
+  // items and Enter opens the focused one (a plain button).
+  let commandQuery = "";
+  function commandItems() {
+    const needle = commandQuery.trim().toLowerCase();
+    return [
+      ...Object.entries(names).map(([id, key]) => ({ label: t(key), kind: t("qf.kind.page"), search: t(key) + " " + id, view: id })),
+      ...state.profiles.map((p) => ({ label: p.name, kind: t("qf.kind.profile"), search: p.name + " " + (p.description || ""), profile: p.id })),
+      ...state.targets.map((d) => ({ label: d, kind: t("qf.kind.target"), search: d, target: d }))
+    ].filter((item) => !needle || item.search.toLowerCase().includes(needle));
+  }
+  function renderCommands() {
+    const box = $("#command-results", modal);
+    if (!box) return;
+    const items = commandItems();
+    box.innerHTML = items.length
+      ? items.map((item) => `<button type="button" class="command-item" ${item.view ? `data-command-view="${item.view}"` : item.profile ? `data-open-profile="${esc(item.profile)}"` : `data-command-target="${esc(item.target)}"`}><span class="od-field od-fill"><strong>${esc(item.label)}</strong><span>${esc(item.kind)}</span></span>${icon("arrow")}</button>`).join("")
+      : `<div class="empty">${esc(t("qf.empty"))}</div>`;
+  }
+  function commands() {
+    commandQuery = "";
+    openDialog(esc(t("qf.title")), esc(t("qf.subtitle")), `<div class="field"><label for="command-search">${esc(t("qf.search"))}</label><input type="search" id="command-search" autocomplete="off" placeholder="${esc(t("qf.placeholder"))}"></div><div id="command-results" class="command-results" aria-label="${esc(t("qf.title"))}"></div><p class="small muted">${esc(t("qf.hint"))}</p>`);
+    renderCommands();
+  }
+  const $$ = (selector, parent = document) => Array.from(parent.querySelectorAll(selector));
+  function moveCommandFocus(step) {
+    const items = $$(".command-item", modal);
+    if (!items.length) return;
+    const at = items.indexOf(document.activeElement);
+    items[(at + step + items.length) % items.length].focus();
+  }
+  const inField = () => { const el = document.activeElement; return Boolean(el) && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable); };
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && String(e.key).toLowerCase() === "k") { e.preventDefault(); commands(); return; }
+    if (modal.open) {
+      if ($(".command-item", modal) && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); moveCommandFocus(e.key === "ArrowDown" ? 1 : -1); }
+      return;
+    }
+    if (e.key === "/" && !inField()) {
+      e.preventDefault();
+      ($$("#profile-search, #target, #target-add", root)[0] || {}).focus();
+    }
+  });
+
+  // ---- tray / menu status (#13 S4) ------------------------------------------
+  // The carrier owns the tray. After every render the page posts the menu it
+  // wants (localized labels, the active profile checked) and a tooltip; the
+  // host rebuilds the native menu, and a pick comes back as a
+  // relaypilot-menu event that runs the same path as a page button.
+  let trayTimer = null;
+  function trayMenu() {
+    return [
+      { id: "show", label: t("menu.show") },
+      { separator: true },
+      ...state.profiles.filter((p) => p.status === "valid").map((p) => ({ id: "profile:" + p.id, label: p.name, checked: p.id === state.activeId })),
+      { separator: true },
+      { id: "quick-find", label: t("menu.quickFind") },
+      ...Object.keys(names).map((id) => ({ id: "go:" + id, label: t(names[id]) })),
+      { separator: true },
+      { id: "quit", label: t("menu.quit") }
+    ];
+  }
+  function reportTrayState() {
+    if (!state.root) return;
+    clearTimeout(trayTimer);
+    trayTimer = setTimeout(() => {
+      const p = active();
+      post("/api/host/tray_state", { state: { tooltip: "RelayPilot — " + sessionName() + (p ? " · " + p.name : ""), view: state.view, menu: trayMenu() } }).catch(() => {});
+    }, 0);
+  }
+  async function trayCommand(id) {
+    if (id === "quit") {
+      if (running() && state.handle) { try { await stopSession(); } catch (_) { /* quitting regardless */ } }
+      await post("/api/host/quit", {}).catch(() => {});
+      return;
+    }
+    if (id === "quick-find") { commands(); return; }
+    if (id.startsWith("go:")) { go(id.slice(3)); return; }
+    if (id.startsWith("profile:")) { await run(() => activateProfile(id.slice(8))); }
+  }
+  // The event stream is opened once the first screen is up. The harness
+  // opens it itself (tray step) and the verifier's boot page passes
+  // ?events=0: on Linux a window capture while the stream is open kills the
+  // carrier's stream writer (glaze#165), and the verifier captures around
+  // the journeys, never during them.
+  const eventsOff = params.get("events") === "0";
+  let events = null;
+  function connectEvents() {
+    if (events) return events;
+    events = new EventSource("/glaze/events");
+    events.addEventListener("relaypilot-menu", (e) => {
+      try { trayCommand(JSON.parse(e.data).id).catch(fail); } catch (_) { /* malformed frame */ }
+    });
+    return events;
+  }
+
   // ---- boot -------------------------------------------------------------------
   async function boot() {
     try {
       const [i18n, ctx] = await Promise.all([get("/api/host/i18n"), get("/api/host/context")]);
-      const locale = /^en/i.test(navigator.language || "") ? "en" : "zh";
-      strings = i18n[locale] || i18n.zh || {};
-      document.documentElement.lang = locale === "en" ? "en" : "zh-CN";
+      applyLocale(i18n, /^en/i.test(navigator.language || "") ? "en" : "zh");
       state.root = ctx.libraryRoot;
       state.version = ctx.version;
       await refresh();
       state.loadError = null;
       render();
+      if (!e2e && !eventsOff) connectEvents();
       if (e2e && ctx.e2e === "true") {
         const harness = await import("./e2e.js");
-        harness.runJourney({ state, rpc, get, t, refresh, render, event, trace });
+        harness.runJourney({ state, rpc, get, t, refresh, render, event, trace, connectEvents });
       }
     } catch (e) {
       state.loadError = (e && e.message) || String(e);

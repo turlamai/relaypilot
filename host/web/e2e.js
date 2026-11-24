@@ -33,6 +33,7 @@ export async function runJourney(app) {
   }
   const setVal = (sel, value, parent = document) => { const el = q(sel, parent); assert(el, "missing " + sel); el.value = value; };
   const dialog = () => q("#modal");
+  const rootEl = () => q("#root");
   const text = (sel, parent = document) => ((q(sel, parent) || {}).textContent || "");
   async function step(id, fn) {
     try { temp[id] = { ok: true, detail: String(await fn()) }; }
@@ -48,7 +49,7 @@ export async function runJourney(app) {
   await step("boot", async () => {
     await waitUntil(() => state.root && !state.loadError);
     assert(q("h1").textContent === t("nav.overview"), "h1 " + q("h1").textContent);
-    assert(document.querySelectorAll(".nav-button").length === 3, "nav entries");
+    assert(document.querySelectorAll(".nav-button").length === 4, "nav entries");
     assert(text(".notice") === t("banner"), "banner");
     assert(q("#target-add"), "no add-target form");
     return `library ${state.root} · ${state.profiles.length} profiles · v${state.version}`;
@@ -274,6 +275,66 @@ export async function runJourney(app) {
     const leaks = Array.from(document.querySelectorAll("#root body, #root *")).map((n) => n.childNodes.length === 1 && n.firstChild.nodeType === 3 ? n.textContent : "").filter((s) => /%@|%lld/.test(s));
     assert(leaks.length === 0, "unformatted placeholders " + leaks[0]);
     return `${zh.length} keys × 2 · no raw placeholders`;
+  });
+
+  await step("settings", async () => {
+    const pick = async (id, value) => {
+      const el = q("#" + id, rootEl());
+      assert(el, "missing #" + id);
+      el.value = value;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      await sleep(60);
+    };
+    await click('[data-view="settings"]');
+    assert(text("h1") === t("nav.settings"), "h1 " + text("h1"));
+    await pick("theme", "dark");
+    assert(document.documentElement.dataset.theme === "dark", "theme " + document.documentElement.dataset.theme);
+    await pick("theme", "light");
+    assert(document.documentElement.dataset.theme === "light", "theme " + document.documentElement.dataset.theme);
+    await pick("theme", "system");
+    assert(text("h1") === t("nav.settings"), "heading back " + text("h1"));
+    const before = state.redact;
+    await click('[data-action="redact"]');
+    assert(state.redact === !before, "redact switch");
+    await click('[data-action="redact"]');
+    return "theme dark/light · redact switch";
+  });
+
+  await step("tray", async () => {
+    // Quick find: keyboard opens it, a profile pick opens that profile.
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+    await sleep(60);
+    assert(dialog().open && q("#command-search", dialog()), "quick find dialog");
+    const input = q("#command-search", dialog());
+    input.value = nameA;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(60);
+    await click(`[data-open-profile="${idA}"]`, dialog());
+    assert(!dialog().open && state.view === "profiles" && state.selected === idA, "profile pick " + state.view);
+    // The carrier pushes tray picks over the event stream; open it now.
+    // The stream's own "open" event is not what is under test (WebKit on
+    // macOS has been seen not to dispatch it for this response): the wait
+    // is a short courtesy, an error fails here, and a stream that stays
+    // silent is caught by the pick below, which has to come back over it.
+    const es = app.connectEvents();
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 5000);
+      es.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+      es.addEventListener("error", () => { clearTimeout(timer); reject(new Error("event stream failed")); }, { once: true });
+    });
+    // The carrier holds the menu the page last posted and runs items itself.
+    await sleep(200);
+    const held = await get("/api/host/e2e_tray");
+    const ids = held.menu.map((i) => i.id);
+    for (const id of ["show", "quick-find", "profile:" + idA, "go:trace", "go:settings", "quit"]) assert(ids.includes(id), "menu lacks " + id);
+    const checked = held.menu.find((i) => i.id === "profile:" + idA);
+    assert(checked && checked.checked === true && checked.label === nameA, "active item " + JSON.stringify(checked));
+    assert(held.view === state.view, "view " + held.view);
+    await post("/api/host/e2e_tray_invoke", { id: "go:connect" });
+    await waitUntil(() => state.view === "connect").catch(() => {
+      throw new Error("pick go:connect did not arrive over the event stream (readyState " + es.readyState + ")");
+    });
+    return `quick find → ${nameA} · tray ${ids.length} items (${held.backend}) · stream state ${es.readyState} · pick go:connect → connect`;
   });
 
   await refresh();
