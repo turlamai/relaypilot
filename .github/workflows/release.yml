@@ -432,16 +432,16 @@ jobs:
           test -s notes.md
           cat >> notes.md <<'EOF'
 
-## What is verified, and what is not
+          ## What is verified, and what is not
 
-- The real-window journey (boot, profiles, import, route check, trace,
-  settings, tray menu route) passes on macOS, Windows and Linux in CI.
-- A live engine session with the real Xray binary is exercised in CI on
-  Linux x64 only.
-- This build has no TUN, VPN or system-service capability.
-- There is no update mechanism; installs do not check for updates.
-- The Windows installer is not Authenticode-signed.
-EOF
+          - The real-window journey (boot, profiles, import, route check, trace,
+            settings, tray menu route) passes on macOS, Windows and Linux in CI.
+          - A live engine session with the real Xray binary is exercised in CI on
+            Linux x64 only.
+          - This build has no TUN, VPN or system-service capability.
+          - There is no update mechanism; installs do not check for updates.
+          - The Windows installer is not Authenticode-signed.
+          EOF
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
