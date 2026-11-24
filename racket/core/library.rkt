@@ -494,13 +494,15 @@
 (define (library-validate-rules root profile-id rules-text)
   (define-values (_path profile _issues) (require-profile root profile-id))
   (define known-targets (profile-targets profile))
+  (define parse-error (box #f))
   (define parsed
     (with-handlers
       ([exn:fail?
         (lambda (exn)
-          (list (issue 0 "parse-error" (format "rules do not parse: ~a" (exn-message exn)))))])
+          (set-box! parse-error (format "rules do not parse: ~a" (exn-message exn)))
+          '())])
       (parse-surge-rules rules-text profile-id)))
-  (define issues
+  (define rule-issues
     (append
      (for/list ([rule (in-list parsed)]
                 #:unless (member (relay-rule-policy rule) known-targets))
@@ -511,6 +513,12 @@
                             (not (valid-hostname? (relay-rule-value rule)))))
        (issue (relay-rule-index rule) "invalid-domain"
               (format "invalid domain value: ~a" (relay-rule-value rule))))))
+  ;; A parse failure is the whole report: the checks above need parsed
+  ;; rules, and must never be applied to an issue list.
+  (define issues
+    (if (unbox parse-error)
+        (list (issue 0 "parse-error" (unbox parse-error)))
+        rule-issues))
   (if (pair? issues)
       issues
       (let ([candidate
