@@ -428,6 +428,7 @@ jobs:
           awk -v v="$VERSION" '
             $0 == "## [" v "]" || index($0, "## [" v "]") == 1 { on = 1; next }
             on && /^## \[/ { exit }
+            on && /^\[.*\]: / { exit }
             on { print }' CHANGELOG.md > notes.md
           test -s notes.md
           cat >> notes.md <<'EOF'
