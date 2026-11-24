@@ -29,6 +29,19 @@ aligned across `rivet.rktd`, `info.rkt` and `racket/core/version.rkt` by
   builds the same packages as rehearsal artifacts only. A packaged-launch
   smoke runs on every change.
 
+### Fixed
+
+- The production carrier (`racket host/main.rkt` and the package) refused
+  its own page: under a capability the HTTP carrier is default-deny, and
+  only the save dialog and the export write carried a permission, so every
+  other route answered 403 and the page showed "load failed". The event
+  stream (tray picks to the page) was refused as well. Every route now
+  carries a permission class, `glaze:events` is granted, a static gate
+  (`scripts/check-route-permissions.py`) keeps it so, and the packaged
+  launch smoke runs the product journey on the production path
+  (`RELAYPILOT_SELFTEST=1`), which is what found it. The verifier
+  (`host/verify.rkt`) runs without a capability and never met the fault.
+
 ### Removed
 
 - The rivet native host directories (`macos-host/`, `windows/`, `linux/`,
