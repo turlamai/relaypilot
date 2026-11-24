@@ -20,8 +20,11 @@ this repository is a released VPN, TUN or system-wide network client
   GitHub Releases.
 - **The rivet native host directories were retired** (2026-11-24, glaze
   re-line). `macos-host/`, `windows/`, `linux/`, `apple/` and `android/` are
-  gone from the tree; the glaze carrier in `host/` is the only desktop host
-  and produces nothing installable before the S5 packaging slice either.
+  gone from the tree; the glaze carrier in `host/` is the only desktop host.
+- **A package is built in CI, never published.** `packaged-smoke.yml` builds
+  an unsigned distribution on the four carriers and checks that the packaged
+  program starts and survives for eight seconds. It makes no installer and
+  uploads nothing, so the next bullet still holds.
 - **No engine binary is bundled or redistributed.** CI and local
   verification download one checksum-pinned Xray release for
   configuration validation and loopback sessions only
