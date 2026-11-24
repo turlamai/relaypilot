@@ -88,4 +88,7 @@ jobs:
         run: bash host/linux-verify.sh raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
       - name: Packaged launch survives
         if: runner.os != 'Linux'
+        # bash on every runner: the Windows default shell would not expand
+        # $SURVIVAL_SECONDS.
+        shell: bash
         run: raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
