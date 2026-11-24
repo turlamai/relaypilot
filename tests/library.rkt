@@ -198,6 +198,14 @@
                 (check-false (file-exists? (profile-file-path root created-id)))
                 (check-equal? (hash-ref (library-snapshot root) 'activeProfileId) second-id)
 
+                ;; Editor validation reports a parse failure as the one issue
+                ;; instead of applying the rule checks to an issue list.
+                (check-equal? (issue-codes (library-validate-rules root second-id "[not a rule]"))
+                              (list "parse-error"))
+                (check-equal? (library-validate-rules root second-id "FINAL, DIRECT\n")
+                              '())
+
+
                 ;; Unusable profile files surface as invalid entries.
                 (call-with-output-file
                  (profile-file-path root "broken")
