@@ -18,7 +18,7 @@
          "core/profile/json.rkt")
 
 (provide start
-         start-stdio)
+         start-ports)
 
 (define-record RouteDecision
                ([traceId : String] [ruleIndex : Int64]
@@ -353,8 +353,8 @@
 ;; Port-based entry for the in-process glaze carrier (#13 S1): the host
 ;; drives this backend over a pipe pair inside one process via rivet/bridge,
 ;; so no fd pair exists. Same server, same RPCs, same wire protocol.
-(define (start-stdio)
-  (serve (current-input-port) (current-output-port)))
+(define (start-ports in out)
+  (serve in out))
 
 (module+ test-support
   (provide RouteDecision

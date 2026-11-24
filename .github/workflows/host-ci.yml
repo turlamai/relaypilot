@@ -1,9 +1,10 @@
 name: glaze carrier
 
-# relaypilot#13 S0: the glaze carrier skeleton on every declared platform
-# (owner decision 2026-11-23, rivet → glaze). Launch smoke with real-window
-# evidence (PNG + typed report), no host AX dependency. The typed RPC
-# surface gate (#13 S1) joins this workflow when the bridge lands.
+# relaypilot#13 S0/S1: the glaze carrier on every declared platform (owner
+# decision 2026-11-23, rivet → glaze). Launch smoke with real-window evidence
+# (PNG + typed report) driving the production backend over rivet/bridge, the
+# committed glaze schema baseline, and the typed RPC surface gate against
+# rivet-schema.json.
 on:
   pull_request:
   push:
@@ -48,6 +49,9 @@ jobs:
         run: |
           raco glaze schema write
           git diff --exit-code -- glaze-schema.json
+      - name: RPC route surface vs rivet-schema.json (#13 S1)
+        shell: bash
+        run: python3 scripts/check-rpc-surface.py
 
   carrier:
     name: glaze carrier (${{ matrix.os }})
@@ -92,6 +96,23 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
           sudo apt-get install -y -o DPkg::Lock::Timeout=120 -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 libgtk-3-0 libwebkit2gtk-4.1-0 xvfb dbus
+      # One carrier runner gets a real engine so the journey exercises the
+      # live engine-session RPCs end to end (same pin as ci.yml); the other
+      # runners report an honest skip for that step.
+      - name: Download pinned Xray (engine for the session journey)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        env:
+          XRAY_VERSION: v26.3.27
+          XRAY_SHA256: 23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae
+        run: |
+          mkdir -p "$RUNNER_TEMP/relaypilot-xray"
+          curl --fail --location --retry 3 \
+            "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-64.zip" \
+            --output "$RUNNER_TEMP/relaypilot-xray/xray.zip"
+          echo "${XRAY_SHA256}  $RUNNER_TEMP/relaypilot-xray/xray.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/relaypilot-xray/xray.zip" -d "$RUNNER_TEMP/relaypilot-xray/runtime"
+          echo "RELAYPILOT_XRAY_BIN=$RUNNER_TEMP/relaypilot-xray/runtime/xray" >> "$GITHUB_ENV"
       - name: Real-window carrier (Linux, Xvfb)
         if: runner.os == 'Linux'
         shell: bash

@@ -4,6 +4,78 @@
   "glz": 1,
   "routes": [
     {
+      "method": "POST",
+      "path": "/api/rpc/compile-engine-config"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/explain-route"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/diagnose-route"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/engine-dry-run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/engine-session-start"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/engine-session-stop"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/engine-session-events"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-read-profile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-import-preview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-import-commit"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-update-rules"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-validate-rules"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-delete-profile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-set-active"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-patch-preview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-patch-apply"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rpc/library-restore-profile"
+    },
+    {
       "method": "GET",
       "path": "/api/health"
     },
@@ -14,6 +86,10 @@
     {
       "method": "POST",
       "path": "/api/host/e2e"
+    },
+    {
+      "method": "POST",
+      "path": "/api/host/e2e_fixtures"
     },
     {
       "method": "POST",
@@ -42,6 +118,15 @@
       {
         "errors": [],
         "name": "hostE2e",
+        "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostE2e_fixtures",
         "parameters": [],
         "result": {
           "kind": "scalar",
@@ -87,6 +172,522 @@
         "errors": [],
         "name": "hostI18n",
         "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcCompileEngineConfig",
+        "parameters": [
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcDiagnoseRoute",
+        "parameters": [
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "domain",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "ip",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "port",
+            "type": {
+              "kind": "scalar",
+              "name": "Int64"
+            }
+          },
+          {
+            "name": "network",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "redact",
+            "type": {
+              "kind": "scalar",
+              "name": "Bool"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "String"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcEngineDryRun",
+        "parameters": [
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "socksPort",
+            "type": {
+              "kind": "scalar",
+              "name": "Int64"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcEngineSessionEvents",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcEngineSessionStart",
+        "parameters": [
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "socksPort",
+            "type": {
+              "kind": "scalar",
+              "name": "Int64"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcEngineSessionStop",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcExplainRoute",
+        "parameters": [
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "domain",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "ip",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "port",
+            "type": {
+              "kind": "scalar",
+              "name": "Int64"
+            }
+          },
+          {
+            "name": "network",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryDeleteProfile",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryImportCommit",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "name",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "description",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "text",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryImportPreview",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "name",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "text",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryList",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryPatchApply",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "policy",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryPatchPreview",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "policy",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryReadProfile",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "String"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryRestoreProfile",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileJson",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibrarySetActive",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryUpdateRules",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "rulesText",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "rpcLibraryValidateRules",
+        "parameters": [
+          {
+            "name": "root",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "profileId",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          },
+          {
+            "name": "rulesText",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
         "result": {
           "kind": "scalar",
           "name": "Value"
