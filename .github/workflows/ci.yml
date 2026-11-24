@@ -9,9 +9,10 @@ permissions:
   contents: read
 
 env:
-  # Single source of truth for the rivet pin; every job installs the same
-  # commit and info.rkt deliberately does not declare rivet (family rule).
-  RIVET_PIN: 642bad4bd5c4892a72f9c9d05d0368fb5a9cebac
+  # Same rivet commit as host-ci.yml and packaged-smoke.yml (the one glaze
+  # is built against), so the suite tests the rivet the package ships with.
+  # info.rkt deliberately does not declare rivet (family rule).
+  RIVET_PIN: 0db8b76396f70dde6d0a9c7935a0bd91d8c066f3
 
 concurrency:
   # Do not silently cancel or replace the quality result of a main commit.
