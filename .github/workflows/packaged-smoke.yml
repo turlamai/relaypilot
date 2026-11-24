@@ -101,17 +101,14 @@ jobs:
         # $SURVIVAL_SECONDS.
         shell: bash
         run: raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
-      # The distribution keeps its executable under bin/ (raco distribute);
-      # macOS assembles it into the .app bundle.
+      # raco distribute lays the tree out flat on Windows and Linux
+      # (dist/<name>[.exe] + dist/lib/); macOS assembles the executable into
+      # the .app bundle.
       - name: Locate the packaged program
         shell: bash
         run: |
-          case "$RUNNER_OS" in
-            macOS) exe="dist/relaypilot.app/Contents/MacOS/relaypilot" ;;
-            Windows) exe="dist/relaypilot/bin/relaypilot.exe" ;;
-            *) exe="dist/relaypilot/bin/relaypilot" ;;
-          esac
-          test -f "$exe" || { echo "::error::no packaged program at $exe"; find dist -maxdepth 3 | head -40; exit 1; }
+          exe="$(find dist -maxdepth 5 -type f -not -path '*/lib/*' \( -name relaypilot -o -name relaypilot.exe \) | head -n 1)"
+          test -n "$exe" || { echo "::error::no packaged program under dist/"; find dist -maxdepth 4 | head -40; exit 1; }
           echo "RELAYPILOT_EXE=$exe" >> "$GITHUB_ENV"
       - name: Packaged product journey (Linux, Xvfb + session bus)
         if: runner.os == 'Linux'
