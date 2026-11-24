@@ -52,6 +52,9 @@ jobs:
       - name: RPC route surface vs rivet-schema.json (#13 S1)
         shell: bash
         run: python3 scripts/check-rpc-surface.py
+      - name: Carrier routes carry a permission class (#13 S5)
+        shell: bash
+        run: python3 scripts/check-route-permissions.py
       - name: Web UI scripts parse (#13 S2/S3)
         shell: bash
         run: for f in host/web/app.js host/web/e2e.js host/web/probe.js; do node --check "$f"; done

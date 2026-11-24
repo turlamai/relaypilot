@@ -2,9 +2,17 @@ name: packaged launch smoke
 
 # relaypilot#13 S5: build the glaze package on every declared platform and
 # launch the packaged program (not `racket host/main.rkt`). This is evidence
-# only: nothing is uploaded as a release asset, no tag is made, and a
-# surviving process does not prove the page rendered (the real-window
-# journeys are host-ci.yml). Pins mirror host-ci.yml.
+# only: nothing is uploaded as a release asset and no tag is made.
+#
+# Two judgements on the packaged program:
+#   1. production launch survives a window of seconds (process-level);
+#   2. RELAYPILOT_SELFTEST=1: the program runs the 16-step product journey
+#      plus a tray menu pick in its own window, on the production path
+#      (per-launch token, capability, carrier tray), and exits with the
+#      verdict. A surviving process does not prove the page rendered: the
+#      first run of (2) is what found the production carrier refusing every
+#      untagged route under its capability (#13).
+# Pins mirror host-ci.yml.
 on:
   pull_request:
   push:
@@ -20,6 +28,7 @@ env:
   RIVET_PIN: 0db8b76396f70dde6d0a9c7935a0bd91d8c066f3
   WEBKIT_DISABLE_DMABUF_RENDERER: '1'
   SURVIVAL_SECONDS: '8'
+  SELFTEST_SECONDS: '360'
 
 concurrency:
   group: packaged-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
@@ -92,3 +101,44 @@ jobs:
         # $SURVIVAL_SECONDS.
         shell: bash
         run: raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
+      # The distribution keeps its executable under bin/ (raco distribute);
+      # macOS assembles it into the .app bundle.
+      - name: Locate the packaged program
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS) exe="dist/relaypilot.app/Contents/MacOS/relaypilot" ;;
+            Windows) exe="dist/relaypilot/bin/relaypilot.exe" ;;
+            *) exe="dist/relaypilot/bin/relaypilot" ;;
+          esac
+          test -f "$exe" || { echo "::error::no packaged program at $exe"; find dist -maxdepth 3 | head -40; exit 1; }
+          echo "RELAYPILOT_EXE=$exe" >> "$GITHUB_ENV"
+      - name: Packaged product journey (Linux, Xvfb + session bus)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p .glaze
+          bash host/linux-verify.sh env RELAYPILOT_SELFTEST=1 "RELAYPILOT_SELFTEST_OUT=$PWD/.glaze/selftest.json" \
+            timeout "$SELFTEST_SECONDS" "$RELAYPILOT_EXE"
+      - name: Packaged product journey
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          mkdir -p .glaze
+          RELAYPILOT_SELFTEST=1 RELAYPILOT_SELFTEST_OUT="$PWD/.glaze/selftest.json" \
+            timeout "$SELFTEST_SECONDS" "$RELAYPILOT_EXE"
+      - name: Self-check report
+        if: always()
+        shell: bash
+        run: |
+          if [ -s .glaze/selftest.json ]; then cat .glaze/selftest.json; echo; else
+            echo "::error::the packaged program wrote no self-check report"; exit 1
+          fi
+      - name: Upload self-check evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-selftest-${{ matrix.os }}
+          path: .glaze/selftest.json
+          if-no-files-found: warn
+          retention-days: 14

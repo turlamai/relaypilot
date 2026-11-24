@@ -173,7 +173,7 @@
                   (cons 'rpc-library-flow (step-ok? report "library-flow"))
                   (cons 'rpc-error-channel (step-ok? report "error-channel"))
                   (cons 'e2e-capture (and e2e-shot (> (file-size e2e-shot) 0))))
-            (report-ok? product 16)
+            (report-ok? product product-journey-steps)
             (list (cons 'ui-boot (step-ok? product "boot"))
                   (cons 'ui-settings (step-ok? product "settings"))
                   (cons 'ui-tray-menu (step-ok? product "tray"))
