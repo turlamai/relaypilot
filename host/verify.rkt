@@ -1,8 +1,8 @@
 #lang racket/base
-;; Real-window launch smoke for the glaze carrier (#13 S0): boot the host,
-;; open index.html?e2e=1, poll the typed report route until the journey
-;; terminates, capture PNGs, assert verdicts. Runs on every declared
-;; platform (Xvfb on Linux CI). The engine is not started in S0.
+;; Real-window launch smoke for the glaze carrier (#13 S0/S1): boot the host
+;; with the in-process RVT1 engine bridge, open index.html?e2e=1, poll the
+;; typed report route until the journey terminates, capture PNGs, assert
+;; verdicts. Runs on every declared platform (Xvfb on Linux CI).
 ;; Run: racket host/verify.rkt
 (require glaze/app
          glaze/window
@@ -53,6 +53,7 @@
     [else #f]))
 
 (putenv "RELAYPILOT_E2E" "1")
+(start-engine!)
 
 (define (await-report url deadline-ms)
   (define deadline (+ (current-inexact-milliseconds) deadline-ms))
@@ -102,23 +103,31 @@
                  (cons 'boot-capture (and boot-shot (> (file-size boot-shot) 0)))
                  (cons 'report-done (equal? (hash-ref report 'phase #f) "done"))
                  (cons 'journey-ok (eq? #t (hash-ref report 'ok #f)))
-                 (cons 'step-count (= 3 (hash-ref report 'stepCount 0)))
+                 (cons 'step-count (= 10 (hash-ref report 'stepCount 0)))
                  (cons 'health (step-ok? "health"))
                  (cons 'i18n (step-ok? "i18n"))
                  (cons 'token-sheet (step-ok? "token-sheet"))
+                 (cons 'rpc-explain-route (step-ok? "explain-route"))
+                 (cons 'rpc-diagnose-route (step-ok? "diagnose-route"))
+                 (cons 'rpc-compile-engine-config (step-ok? "compile-engine-config"))
+                 (cons 'rpc-engine-dry-run (step-ok? "engine-dry-run"))
+                 (cons 'rpc-engine-session (step-ok? "engine-session"))
+                 (cons 'rpc-library-flow (step-ok? "library-flow"))
+                 (cons 'rpc-error-channel (step-ok? "error-channel"))
                  (cons 'e2e-capture (and e2e-shot (> (file-size e2e-shot) 0)))))
      (webview-close wv))))
 
 (stop)
+(stop-engine!)
 (make-directory* evidence-dir)
 (call-with-output-file (build-path evidence-dir "relaypilot-host-report.json")
   (lambda (out)
-    (write-json (hasheq 's0 (or (unbox report-box) (hasheq))) out)
+    (write-json (hasheq 'carrier (or (unbox report-box) (hasheq))) out)
     (newline out))
   #:exists 'truncate/replace)
 (for ([v (in-list verdicts)])
   (printf "[verify] ~a = ~a\n" (car v) (cdr v)))
-(printf "[verify] s0 report: ~a\n" (jsexpr->string (or (unbox report-box) (hasheq))))
+(printf "[verify] carrier report: ~a\n" (jsexpr->string (or (unbox report-box) (hasheq))))
 (unless (and (pair? verdicts) (andmap cdr verdicts))
   (eprintf "[verify] glaze carrier verification failed\n")
   (exit 1))
