@@ -3,7 +3,7 @@
 // app.js only when both ?e2e=1 and the host gate (RELAYPILOT_E2E=1) are on.
 // Verdicts go to the host harness route as a typed report, like probe.js.
 export async function runJourney(app) {
-  const { state, rpc, get, t, refresh } = app;
+  const { state, rpc, get, t, refresh, trace } = app;
   const report = { phase: "running", ok: false, view: "product", steps: {} };
   const push = async () => {
     report.steps = {};
@@ -48,7 +48,7 @@ export async function runJourney(app) {
   await step("boot", async () => {
     await waitUntil(() => state.root && !state.loadError);
     assert(q("h1").textContent === t("nav.overview"), "h1 " + q("h1").textContent);
-    assert(document.querySelectorAll(".nav-button").length === 2, "nav entries");
+    assert(document.querySelectorAll(".nav-button").length === 3, "nav entries");
     assert(text(".notice") === t("banner"), "banner");
     assert(q("#target-add"), "no add-target form");
     return `library ${state.root} · ${state.profiles.length} profiles · v${state.version}`;
@@ -126,6 +126,55 @@ export async function runJourney(app) {
     assert(activeEntry().ruleCount === 2, "ruleCount " + activeEntry().ruleCount);
     assert(!state.undo, "undo stack should clear");
     return "restored snapshot → DIRECT · 2 rules";
+  });
+
+  await step("trace", async () => {
+    await click('[data-view="trace"]');
+    setVal("#target", "lab.internal");
+    q('[data-form="inspect"]').requestSubmit();
+    await idle();
+    assert(q(".result-heading h2") && q(".result-heading h2").textContent === "lab.internal", "target heading");
+    assert(text(".actual-result strong") === t("policy.direct"), "result " + text(".actual-result strong"));
+    assert(text(".route-explanation").includes(String(t("trace.cause.suffix", 1))), "cause " + text(".route-explanation"));
+    const sel = q("#expected-policy");
+    sel.value = "REJECT";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    assert(text(".result-heading .badge") === t("trace.mismatch"), "badge " + text(".result-heading .badge"));
+    await click('[data-view="connect"]');
+    assert(q('.list [data-action="inspect-target"][data-target="lab.internal"]'), "no mismatch row in 待处理");
+    await click('.list [data-action="inspect-target"][data-target="lab.internal"]');
+    await idle();
+    await click('.route-explanation [data-action="patch"]');
+    setVal("#patch-policy", "REJECT", dialog());
+    await click('[data-action="preview-patch"]', dialog());
+    await idle();
+    await click('[data-action="apply-patch"]', dialog());
+    await idle();
+    assert(trace.decision.policy === "REJECT" && text(".result-heading .badge") === t("trace.match"), "after patch " + text(".result-heading .badge"));
+    await click('.topbar [data-action="undo"]');
+    await idle();
+    assert(trace.decision.policy === "DIRECT", "undo " + trace.decision.policy);
+    const sel2 = q("#expected-policy");
+    sel2.value = "";
+    sel2.dispatchEvent(new Event("change", { bubbles: true }));
+    return "explain (rule 1, DOMAIN-SUFFIX) → expectation mismatch listed → patch → match → undo";
+  });
+
+  await step("export", async () => {
+    assert(q('[data-action="redact"]').getAttribute("aria-checked") === "true", "redact should default to on");
+    await click('[data-action="export"]');
+    await idle();
+    assert(trace.lastExport, "no export written");
+    const redacted = (await post("/api/host/e2e_export_read", { path: trace.lastExport })).json;
+    const bundle = JSON.parse(redacted);
+    assert(bundle.traceId === "[redacted]" && !redacted.includes("lab.internal"), "redacted bundle leaks: " + redacted.slice(0, 80));
+    await click('[data-action="redact"]');
+    await click('[data-action="export"]');
+    await idle();
+    const full = (await post("/api/host/e2e_export_read", { path: trace.lastExport })).json;
+    assert(full.includes("lab.internal") && JSON.parse(full).traceId !== "[redacted]", "full bundle " + full.slice(0, 80));
+    await click('[data-action="redact"]');
+    return "redacted bundle written → target hidden; redact off → target + trace id kept";
   });
 
   await step("editor", async () => {
