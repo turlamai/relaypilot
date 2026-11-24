@@ -804,10 +804,11 @@
     if (id.startsWith("profile:")) { await run(() => activateProfile(id.slice(8))); }
   }
   // The event stream is opened once the first screen is up. The harness
-  // opens it itself (tray step): on Linux a window capture while the stream
-  // is open kills the carrier's stream writer (glaze: "attempt to
-  // deschedule the current thread in atomic mode"), and the verifier
-  // captures around the journeys, never during them.
+  // opens it itself (tray step) and the verifier's boot page passes
+  // ?events=0: on Linux a window capture while the stream is open kills the
+  // carrier's stream writer (glaze#165), and the verifier captures around
+  // the journeys, never during them.
+  const eventsOff = params.get("events") === "0";
   let events = null;
   function connectEvents() {
     if (events) return events;
@@ -828,7 +829,7 @@
       await refresh();
       state.loadError = null;
       render();
-      if (!e2e) connectEvents();
+      if (!e2e && !eventsOff) connectEvents();
       if (e2e && ctx.e2e === "true") {
         const harness = await import("./e2e.js");
         harness.runJourney({ state, rpc, get, t, refresh, render, event, trace, connectEvents });

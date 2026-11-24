@@ -114,8 +114,10 @@
    #:on-ready
    (lambda (wv url)
      ;; On Windows the webview reports about:blank until the first navigation
-     ;; completes, so the url is asserted after the initial load.
-     (define loaded? (load-page! wv url "index.html"))
+     ;; completes, so the url is asserted after the initial load. ?events=0:
+     ;; the boot page must not open the event stream before this capture
+     ;; (glaze#165, Linux).
+     (define loaded? (load-page! wv url "index.html?events=0"))
      (define url-ok? (and (string? (webview-url wv)) (string-prefix? (webview-url wv) url)))
      (define boot-shot (save-shot! (capture! wv) "relaypilot-host-boot.png"))
 
