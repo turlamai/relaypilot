@@ -34,8 +34,11 @@ jobs:
           architecture: x64
       - name: Install pinned rivet
         run: raco pkg install --auto --no-docs 'https://github.com/turlamai/rivet.git#${{ env.RIVET_PIN }}'
-      - name: Install package
-        run: raco pkg install --auto --no-docs --name relaypilot "$GITHUB_WORKSPACE"
+      # The tree is not installed as a Racket package: host/ (the glaze
+      # carrier, #13) needs glaze + rivet/bridge, which this job does not
+      # install; host-ci.yml owns it. Everything here runs from source and the
+      # deps are base + rackunit-lib; both ship with the full distribution the
+      # image provides (setup-racket already has them).
       - name: Check release identity
         run: scripts/check-release-version.sh
       - name: Check third-party notice pin
