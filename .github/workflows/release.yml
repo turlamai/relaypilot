@@ -1,0 +1,459 @@
+name: Release
+
+# relaypilot#13 S5: the v0.1.0 release line. Two modes, same build steps:
+#
+#   - push of a v* tag: builds signed + notarized macOS, unsigned Windows,
+#     Linux packages, and publishes them as a GitHub Release with SHA256SUMS
+#     and build-provenance attestations. Fails closed before any expensive
+#     build when the macOS signing secrets are missing.
+#   - workflow_dispatch: a rehearsal. Same builds (macOS ad-hoc signed),
+#     artifacts only, nothing is published. Use it to try the installers
+#     before tagging.
+#
+# Differences from the family baseline (booklight release.yml), on record:
+#   - No signed update manifest: RelayPilot has no update mechanism
+#     (docs/distribution.md, ROADMAP M2 reserves the slot).
+#   - No Flatpak bundle yet: it needs a flatpak/ manifest and an app icon,
+#     neither of which exists.
+#   - No app icon: installers carry the glaze default until design/ owns one.
+#
+# Version and identity come from racket/core/version.rkt, the release
+# identity scripts/check-release-version.sh gates. Pins are read from
+# host-ci.yml so the package is built with the rivet and glaze the carrier
+# CI verifies.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IS_TAG_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.identity.outputs.version }}
+      identifier: ${{ steps.identity.outputs.identifier }}
+      glaze-pin: ${{ steps.pin.outputs.glaze-pin }}
+      rivet-pin: ${{ steps.pin.outputs.rivet-pin }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          architecture: x64
+      - name: Check release identity (tag must match when tagging)
+        run: |
+          if [ "$IS_TAG_RELEASE" = "true" ]; then
+            bash scripts/check-release-version.sh "$GITHUB_REF_NAME"
+          else
+            bash scripts/check-release-version.sh
+          fi
+      - name: Read version and identifier
+        id: identity
+        run: |
+          read -r VERSION IDENTIFIER <<< "$(racket -e '(require "racket/core/version.rkt") (printf "~a ~a" app-version app-identifier)')"
+          test -n "$VERSION" && test -n "$IDENTIFIER"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "identifier=$IDENTIFIER" >> "$GITHUB_OUTPUT"
+      - name: Check CHANGELOG has this version
+        run: |
+          VERSION="$(racket -e '(require "racket/core/version.rkt") (display app-version)')"
+          grep -q "^## \[$VERSION\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## [$VERSION]' section"; exit 1; }
+      - name: Tag releases need the macOS signing secrets
+        if: env.IS_TAG_RELEASE == 'true'
+        env:
+          DEVELOPER_ID_P12_B64: ${{ secrets.DEVELOPER_ID_P12_B64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+        run: |
+          for name in DEVELOPER_ID_P12_B64 DEVELOPER_ID_P12_PASSWORD ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_B64; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not set on this repository. A tag release is production-signed and notarized; add the five macOS signing secrets (same names as turlamai/booklight) before pushing a v* tag. Nothing was built or published."
+              exit 1
+            fi
+          done
+      - name: Read glaze + rivet pins from host-ci.yml
+        id: pin
+        run: |
+          pin="$(grep -m1 -E '^ *GLAZE_PIN:' .github/workflows/host-ci.yml | sed -E 's/.*GLAZE_PIN:[[:space:]]*//')"
+          test -n "$pin"
+          echo "glaze-pin=$pin" >> "$GITHUB_OUTPUT"
+          rpin="$(grep -m1 -E '^ *RIVET_PIN:' .github/workflows/host-ci.yml | sed -E 's/.*RIVET_PIN:[[:space:]]*//')"
+          test -n "$rpin"
+          echo "rivet-pin=$rpin" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: macOS (${{ matrix.arch }})
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+            racket-arch: arm64
+          - arch: x64
+            runner: macos-15-intel
+            racket-arch: x64
+    env:
+      MACOS_SIGNING_CONFIGURED: ${{ secrets.DEVELOPER_ID_P12_B64 != '' && secrets.ASC_KEY_P8_B64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Racket (${{ matrix.racket-arch }})
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          architecture: ${{ matrix.racket-arch }}
+      - name: Install Rivet + Glaze (catalog)
+        run: |
+          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${{ needs.validate.outputs.rivet-pin }}"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/glaze.git#${{ needs.validate.outputs.glaze-pin }}"
+      - name: Provision Developer ID certificate
+        if: env.MACOS_SIGNING_CONFIGURED == 'true'
+        env:
+          DEVELOPER_ID_P12_B64: ${{ secrets.DEVELOPER_ID_P12_B64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          P12="$RUNNER_TEMP/developer-id.p12"
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          printf '%s' "$DEVELOPER_ID_P12_B64" | base64 --decode > "$P12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$P12" -k "$KEYCHAIN" -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -s "$KEYCHAIN" $(security list-keychains | tr -d '"')
+          rm -f "$P12"
+          IDENTITY_NAME="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | sed -E 's/^[^"]*"(.*)"$/\1/')"
+          test -n "$IDENTITY_NAME"
+          echo "MACOS_SIGN_IDENTITY=$IDENTITY_NAME" >> "$GITHUB_ENV"
+      - name: Store notarytool keychain profile
+        if: env.MACOS_SIGNING_CONFIGURED == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+        run: |
+          set -euo pipefail
+          P8="$RUNNER_TEMP/asc-api-key.p8"
+          printf '%s' "$ASC_KEY_P8_B64" | base64 --decode > "$P8"
+          xcrun notarytool store-credentials ASC_NOTARY \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --key "$P8"
+          rm -f "$P8"
+      - name: Build (Developer ID + notarized)
+        if: env.MACOS_SIGNING_CONFIGURED == 'true'
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          IDENTIFIER="${{ needs.validate.outputs.identifier }}"
+          raco glaze build \
+            --name relaypilot \
+            --version "$VERSION" \
+            --publisher "Turing Lambda" \
+            --identifier "$IDENTIFIER" \
+            --entry host/main.rkt \
+            --installer \
+            --sign "$MACOS_SIGN_IDENTITY" \
+            --notarize ASC_NOTARY
+          test -d dist/relaypilot.app
+          test -s dist/relaypilot.dmg
+      - name: Build (ad-hoc, rehearsal only)
+        if: env.MACOS_SIGNING_CONFIGURED != 'true'
+        run: |
+          set -euo pipefail
+          if [ "$IS_TAG_RELEASE" = "true" ]; then
+            echo "::error::Tag releases must be production-signed: the macOS signing secrets are missing."
+            exit 1
+          fi
+          VERSION="${{ needs.validate.outputs.version }}"
+          IDENTIFIER="${{ needs.validate.outputs.identifier }}"
+          raco glaze build \
+            --name relaypilot \
+            --version "$VERSION" \
+            --publisher "Turing Lambda" \
+            --identifier "$IDENTIFIER" \
+            --entry host/main.rkt \
+            --installer
+          test -d dist/relaypilot.app
+          test -s dist/relaypilot.dmg
+      - name: Collect dmg + zip
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          mv dist/relaypilot.dmg "relaypilot-$VERSION-macos-${{ matrix.arch }}.dmg"
+          ditto -c -k --keepParent dist/relaypilot.app "relaypilot-$VERSION-macos-${{ matrix.arch }}.zip"
+          ls -la relaypilot-*
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: relaypilot-*-macos-${{ matrix.arch }}.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            relaypilot-*-macos-${{ matrix.arch }}.dmg
+            relaypilot-*-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  windows:
+    name: Windows (x64)
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          architecture: x64
+      - name: Export trusted Mozilla CA roots for Windows Racket
+        shell: pwsh
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'relaypilot-mozilla-roots.pem'
+          $js = 'const tls=require("node:tls"),fs=require("node:fs"); if(tls.rootCertificates.length<50) process.exit(2); fs.writeFileSync(process.argv[1],tls.rootCertificates.join("\n")+"\n",{flag:"wx"});'
+          node -e $js $bundle
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundle -PathType Leaf)) {
+            throw "Unable to export CA roots; refusing insecure TLS fallback"
+          }
+          "RELAYPILOT_CI_CA_BUNDLE=$bundle" >> $env:GITHUB_ENV
+      - name: Install pinned Keel + Rivet + Glaze (verified TLS)
+        env:
+          RIVET_PIN: ${{ needs.validate.outputs.rivet-pin }}
+          GLAZE_PIN: ${{ needs.validate.outputs.glaze-pin }}
+        shell: pwsh
+        run: racket scripts/ci-install-windows-deps.rkt
+      - name: Install WiX (v5; v7 requires EULA acceptance)
+        shell: bash
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          echo "$USERPROFILE/.dotnet/tools" >> "$GITHUB_PATH"
+      - name: Build MSI + distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          raco glaze build \
+            --name relaypilot \
+            --version "${{ needs.validate.outputs.version }}" \
+            --publisher "Turing Lambda" \
+            --identifier "${{ needs.validate.outputs.identifier }}" \
+            --entry host/main.rkt \
+            --installer
+          test -s dist/relaypilot.msi
+      - name: Collect MSI + portable zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ needs.validate.outputs.version }}'
+          $msi = "relaypilot-$version-windows-x64.msi"
+          Move-Item dist/relaypilot.msi $msi
+          $items = Get-ChildItem dist -Exclude *.msi
+          Compress-Archive -Path $items.FullName -DestinationPath "relaypilot-$version-windows-x64.zip"
+          Get-ChildItem relaypilot-* | Select-Object Name, Length
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            relaypilot-*-windows-x64.msi
+            relaypilot-*-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            relaypilot-*-windows-x64.msi
+            relaypilot-*-windows-x64.zip
+          if-no-files-found: error
+
+  linux:
+    name: Linux (${{ matrix.arch }})
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          architecture: ${{ matrix.arch }}
+      - name: Install Rivet + Glaze (catalog)
+        run: |
+          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${{ needs.validate.outputs.rivet-pin }}"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/glaze.git#${{ needs.validate.outputs.glaze-pin }}"
+      - name: Install packaging tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes rpm desktop-file-utils file
+      - name: Fetch appimagetool (release CDN fallback)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "${{ matrix.arch }}" in
+            x64)
+              asset_arch=x86_64
+              digest=46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1
+              ;;
+            arm64)
+              asset_arch=aarch64
+              digest=04f45ea45b5aa07bb2b071aed9dbf7a5185d3953b11b47358c1311f11ea94a96
+              ;;
+            *) echo "::error::unsupported Linux architecture"; exit 1 ;;
+          esac
+          dest="$RUNNER_TEMP/appimagetool-${asset_arch}.AppImage"
+          url="https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-${asset_arch}.AppImage"
+          if ! curl -fSL --retry 2 --retry-delay 2 -o "$dest" "$url"; then
+            asset_id="$(gh api repos/AppImage/appimagetool/releases/tags/1.9.0 \
+              --jq ".assets[] | select(.name==\"appimagetool-${asset_arch}.AppImage\") | .id")"
+            gh api -H 'Accept: application/octet-stream' \
+              "repos/AppImage/appimagetool/releases/assets/${asset_id}" > "$dest"
+          fi
+          actual="$(sha256sum "$dest" | awk '{print $1}')"
+          if [ "$actual" != "$digest" ]; then
+            echo "::error::appimagetool checksum mismatch (expected $digest, got $actual)"
+            exit 1
+          fi
+          chmod +x "$dest"
+          mkdir -p "$RUNNER_TEMP/bin"
+          cp "$dest" "$RUNNER_TEMP/bin/appimagetool"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Build (tar.gz tree + deb + rpm + AppImage)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          set -euo pipefail
+          raco glaze build \
+            --name relaypilot \
+            --version "${{ needs.validate.outputs.version }}" \
+            --publisher "Turing Lambda" \
+            --identifier "${{ needs.validate.outputs.identifier }}" \
+            --entry host/main.rkt \
+            --installer
+          test -s dist/relaypilot.deb
+          test -s dist/relaypilot.rpm
+          test -s dist/relaypilot.AppImage
+      - name: Collect packages, SBOM and notices
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          case "$ARCH" in x64) DEB_ARCH=amd64; RPM_ARCH=x86_64 ;; arm64) DEB_ARCH=arm64; RPM_ARCH=aarch64 ;; esac
+          raco glaze compliance --out dist
+          cd dist
+          mv relaypilot.deb "relaypilot-$VERSION-linux-$DEB_ARCH.deb"
+          mv relaypilot.rpm "relaypilot-$VERSION-linux-$RPM_ARCH.rpm"
+          mv relaypilot.AppImage "relaypilot-$VERSION-linux-$RPM_ARCH.AppImage"
+          tar -czf "relaypilot-$VERSION-linux-$ARCH.tar.gz" bin lib
+          mv glaze-sbom.cdx.json "relaypilot-$VERSION-linux-$ARCH.sbom.cdx.json"
+          mv glaze-notices.txt "relaypilot-$VERSION-linux-$ARCH-THIRD_PARTY_NOTICES.txt"
+          ls -la relaypilot-*
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/relaypilot-*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/relaypilot-*
+          if-no-files-found: error
+
+  publish:
+    name: Publish release (tag only)
+    needs: [macos, windows, linux]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: '*'
+          merge-multiple: true
+      - name: Stage every asset and write SHA256SUMS
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          mkdir -p public
+          for suffix in \
+            macos-arm64.dmg macos-arm64.zip macos-x64.dmg macos-x64.zip \
+            windows-x64.msi windows-x64.zip \
+            linux-x64.tar.gz linux-arm64.tar.gz \
+            linux-amd64.deb linux-arm64.deb \
+            linux-x86_64.rpm linux-aarch64.rpm \
+            linux-x86_64.AppImage linux-aarch64.AppImage \
+            linux-x64.sbom.cdx.json linux-arm64.sbom.cdx.json \
+            linux-x64-THIRD_PARTY_NOTICES.txt linux-arm64-THIRD_PARTY_NOTICES.txt; do
+            name="relaypilot-$VERSION-$suffix"
+            test -s "dist/$name" || { echo "::error::Missing or empty $name"; exit 1; }
+            mv "dist/$name" "public/$name"
+          done
+          cd public
+          shasum -a 256 relaypilot-* | LC_ALL=C sort -k2 > SHA256SUMS
+          shasum -a 256 --check SHA256SUMS
+          test "$(grep -c '^' SHA256SUMS)" -eq 18
+      - name: Write release notes from the CHANGELOG section
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate.outputs.version }}"
+          awk -v v="$VERSION" '
+            $0 == "## [" v "]" || index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on && /^\[.*\]: / { exit }
+            on { print }' CHANGELOG.md > notes.md
+          test -s notes.md
+          cat >> notes.md <<'EOF'
+
+          ## What is verified, and what is not
+
+          - The real-window journey (boot, profiles, import, route check, trace,
+            settings, tray menu route) passes on macOS, Windows and Linux in CI.
+          - A live engine session with the real Xray binary is exercised in CI on
+            Linux x64 only.
+          - This build has no TUN, VPN or system-service capability.
+          - There is no update mechanism; installs do not check for updates.
+          - The Windows installer is not Authenticode-signed.
+          EOF
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" -R turlamai/relaypilot >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" public/* --clobber -R turlamai/relaypilot
+          else
+            gh release create "$GITHUB_REF_NAME" public/* \
+              -R turlamai/relaypilot \
+              --title "RelayPilot $GITHUB_REF_NAME" \
+              --notes-file notes.md \
+              --prerelease
+          fi

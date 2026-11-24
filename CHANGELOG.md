@@ -3,19 +3,39 @@
 All notable changes to RelayPilot are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-RelayPilot is an architecture alpha: versions below identify the source
-tree, and no release artifacts, installers or tags exist for them yet.
+RelayPilot is an architecture alpha. Versions identify the source tree;
+`0.1.0` is the first version with packaged builds (see Releases).
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-08
+## [0.1.0] - 2026-11-24
 
-Architecture alpha. The version was established at the initial commit and
-is kept aligned across `rivet.rktd`, `info.rkt` and
-`app/core/version.rkt` by `scripts/check-release-version.sh`.
+Architecture alpha, and the first packaged build. The version is kept
+aligned across `rivet.rktd`, `info.rkt` and `racket/core/version.rkt` by
+`scripts/check-release-version.sh`. It was set at the initial commit
+(2026-10-08) and had no release artifacts before this date.
 
 ### Added
 
+- Glaze desktop carrier (`host/`): one web UI for connect/overview, the
+  profile library, route check and trace, diagnostics export and settings;
+  quick find (`Ctrl/⌘ K`); a carrier-owned tray whose picks run the same
+  action path as page buttons. Built on Windows, macOS and Linux; a real
+  window journey runs on all three in CI.
+- Typed RPC bridge over the glaze carrier for route explanation, engine
+  compilation and session, the profile library, diagnostics and i18n.
+- Release pipeline (`.github/workflows/release.yml`): a `v*` tag builds the
+  installers and publishes a GitHub Release with `SHA256SUMS`; a manual run
+  builds the same packages as rehearsal artifacts only. A packaged-launch
+  smoke runs on every change.
+
+### Removed
+
+- The rivet native host directories (`macos-host/`, `windows/`, `linux/`,
+  `apple/`, `android/`) and their CI jobs; the glaze carrier is the only
+  desktop host. The code stays in history before `216251c`.
+
+### Added (engine and CLI, 2026-10-08)
 - Canonical Relay Profile JSON with validation and round-trip serialization
 - Surge-compatible rule-line import for `DOMAIN`, `DOMAIN-SUFFIX`,
   `IP-CIDR`, `IP-CIDR6`, `GEOIP`, `FINAL`, and `MATCH` syntax
