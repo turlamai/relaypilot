@@ -117,6 +117,22 @@
     },
     {
       "method": "POST",
+      "path": "/api/host/tray_state"
+    },
+    {
+      "method": "GET",
+      "path": "/api/host/e2e_tray"
+    },
+    {
+      "method": "POST",
+      "path": "/api/host/e2e_tray_invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/host/quit"
+    },
+    {
+      "method": "POST",
       "path": "/api/host/write"
     },
     {
@@ -301,11 +317,63 @@
       },
       {
         "errors": [],
+        "name": "hostE2e_tray",
+        "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostE2e_tray_invoke",
+        "parameters": [
+          {
+            "name": "id",
+            "type": {
+              "kind": "scalar",
+              "name": "String"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "String"
+        }
+      },
+      {
+        "errors": [],
         "name": "hostI18n",
         "parameters": [],
         "result": {
           "kind": "scalar",
           "name": "Value"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostQuit",
+        "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Bool"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostTray_state",
+        "parameters": [
+          {
+            "name": "state",
+            "type": {
+              "kind": "scalar",
+              "name": "Value"
+            }
+          }
+        ],
+        "result": {
+          "kind": "scalar",
+          "name": "Bool"
         }
       },
       {

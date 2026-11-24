@@ -39,6 +39,9 @@
          glaze/api-macros ; define-api-routes
          glaze/capability ; make-capability
          glaze/dialogs    ; make-dialog-routes (native save panel)
+         glaze/events     ; make-event-bus, bus-broadcast! (tray → page)
+         glaze/tray/main  ; make-tray, tray-set-menu! (carrier tray)
+         glaze/window     ; webview-focus!
          glaze/types      ; GString, GInt64, GBool, GValue
          racket/file
          racket/path
@@ -53,7 +56,8 @@
 ;; start-engine! wires the codec to the in-process RVT1 transport — the
 ;; app entry and the real-window verifier both call it; schema checks load
 ;; this module without starting anything.
-(provide api start-engine! stop-engine! assemble-public-dir app-version host-capability)
+(provide api start-engine! stop-engine! assemble-public-dir app-version host-capability
+         host-bus)
 
 (define-runtime-path schema-path "../rivet-schema.json")
 (define schema (call-with-input-file schema-path read-json))
@@ -215,6 +219,29 @@
    (unless (e2e-enabled?) (bad-param "export fixture: harness not enabled"))
    (define p (string->path path))
    (if (file-exists? p) (file->string p) "")]
+  ;; ---- tray / menu status (#13 S4) ----------------------------------------
+  ;; The page reports the menu it wants (localized labels, checked/enabled
+  ;; hints) and a tooltip after each render; the host rebuilds the native menu.
+  [(POST "api/host/tray_state" #:returns GBool)
+   (trayState [state GValue])
+   (unless (tray-state-valid? state) (bad-param "tray state: {tooltip, menu} expected"))
+   (set-box! tray-state-box state)
+   (tray-refresh!)
+   #t]
+  ;; Journey fixtures: what the host currently holds for the tray, and a
+  ;; menu pick made from outside the page (runs the item's real action).
+  [(GET "api/host/e2e_tray" #:returns GValue)
+   (e2eTray)
+   (e2e-tray-info)]
+  [(POST "api/host/e2e_tray_invoke" #:returns GString)
+   (e2eTrayInvoke [id GString])
+   (e2e-tray-invoke! id)]
+  ;; The tray Quit item asks the page to stop a live engine session first.
+  [(POST "api/host/quit" #:returns GBool)
+   (hostQuit)
+   (stop-engine!)
+   (thread (lambda () (sleep 0.2) (exit 0)))
+   #t]
   ;; Diagnostic export write; the destination is what the user picked in the
   ;; native save panel (api/dialog/save). Bytes ride base64 (GString).
   [(POST "api/host/write" #:returns GBool #:permission 'host:write)
@@ -291,6 +318,89 @@
     #:exists 'truncate/replace)
   (rename-file-or-directory tmp p #t))
 
+;; ---- tray / menu status ----------------------------------------------------
+;; The carrier owns the tray icon and the native menu; the page owns the
+;; information architecture (labels come localized from the page). Picking an
+;; item broadcasts back over glaze/events so the action runs the same path in
+;; the page as a button click. Two items are host-owned: "show" refocuses the
+;; window, "quit" ends the process (the page may first stop its session).
+(define host-bus (make-event-bus))
+(define tray-box (box #f))
+(define window-box (box #f))
+(define tray-state-box (box (hasheq 'tooltip "RelayPilot" 'menu '())))
+
+(define (focus-window!)
+  (define wv (unbox window-box))
+  (when wv
+    (with-handlers ([exn:fail? void]) (webview-focus! wv))))
+
+(define (tray-quit!)
+  ;; The page is told to quit through api/host/quit by its own session path;
+  ;; a page that never answers must not pin the process.
+  (thread (lambda () (sleep 4) (exit 0))))
+
+(define (tray-state-valid? state)
+  (and (hash? state)
+       (string? (hash-ref state 'tooltip #f))
+       (list? (hash-ref state 'menu '()))))
+
+(define (tray-menu-items state)
+  (define menu (hash-ref state 'menu '()))
+  (filter
+   menu-item?
+   (for/list ([item (in-list menu)])
+     (define label (and (hash? item) (hash-ref item 'label #f)))
+     (define id (and (hash? item) (hash-ref item 'id #f)))
+     (cond
+       [(and (string? label) (string? id))
+        (make-menu-item label
+                        #:id id
+                        #:checked? (eq? #t (hash-ref item 'checked #f))
+                        #:enabled? (not (eq? #f (hash-ref item 'enabled #t)))
+                        #:action
+                        (lambda ()
+                          (cond
+                            [(string=? id "show") (focus-window!)]
+                            [(string=? id "quit") (tray-quit!)]
+                            [else (bus-broadcast! host-bus 'relaypilot-menu
+                                                  (hasheq 'id id))])))]
+       [else (menu-separator)]))))
+
+(define (tray-refresh!)
+  (define t (unbox tray-box))
+  (when t
+    (define state (unbox tray-state-box))
+    (with-handlers ([exn:fail? (lambda (e)
+                                 (eprintf "[tray] menu update failed: ~a\n" (exn-message e)))])
+      (tray-set-tooltip! t (hash-ref state 'tooltip "RelayPilot"))
+      (tray-set-menu! t (tray-menu-items state)))))
+
+(define (e2e-tray-info)
+  (unless (e2e-enabled?) (bad-param "tray fixture: harness not enabled"))
+  (define state (unbox tray-state-box))
+  (define t (unbox tray-box))
+  (hasheq 'attached (and t #t)
+          'backend (if t (format "~a" (tray-backend t)) "none")
+          'tooltip (hash-ref state 'tooltip "")
+          'view (hash-ref state 'view "")
+          'menu (for/list ([item (in-list (tray-menu-items state))]
+                           #:unless (menu-separator? item))
+                  (hasheq 'id (menu-item-id item)
+                          'label (menu-item-label item)
+                          'checked (menu-item-checked? item)
+                          'enabled (menu-item-enabled? item)))))
+
+(define (e2e-tray-invoke! id)
+  (unless (e2e-enabled?) (bad-param "tray fixture: harness not enabled"))
+  (define hit
+    (for/first ([item (in-list (tray-menu-items (unbox tray-state-box)))]
+                #:when (and (not (menu-separator? item))
+                            (string=? (menu-item-id item) id)))
+      item))
+  (unless hit (bad-param (format "no tray item ~s" id)))
+  ((menu-item-action hit))
+  id)
+
 (define (host-e2e-report! payload)
   (when (e2e-enabled?) (set-box! e2e-report-box payload))
   (void))
@@ -359,10 +469,20 @@
     (or (let ([v (getenv "RELAYPILOT_TRANSPORT")])
           (and (member v '("native" "http")) (string->symbol v)))
         'http))
+  ;; Tray resident from first paint; a platform without a native backend
+  ;; degrades to the inert stub (the window stays the only surface).
+  (define tray
+    (make-tray #:icon #f
+               #:tooltip "RelayPilot"
+               #:menu (list (make-menu-item "Quit" #:id "quit" #:action tray-quit!))
+               #:on-event (lambda (_) (focus-window!))))
+  (set-box! tray-box tray)
   (define-values (_kind stop)
     (run-app
      #:public-dir (assemble-public-dir)
      #:api api
+     #:events host-bus
+     #:on-ready (lambda (wv _) (set-box! window-box wv))
      #:transport transport
      #:api-token (or (getenv "GLAZE_API_TOKEN") #t)
      #:title "RelayPilot"
