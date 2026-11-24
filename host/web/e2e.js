@@ -312,9 +312,12 @@ export async function runJourney(app) {
     await click(`[data-open-profile="${idA}"]`, dialog());
     assert(!dialog().open && state.view === "profiles" && state.selected === idA, "profile pick " + state.view);
     // The carrier pushes tray picks over the event stream; open it now.
+    // WebKit (macOS) only reports the stream as open with its first body
+    // bytes, i.e. the carrier's keepalive (glaze: 15 s), so the wait must
+    // outlast it.
     await new Promise((resolve, reject) => {
       const es = app.connectEvents();
-      const timer = setTimeout(() => reject(new Error("event stream did not open")), 15000);
+      const timer = setTimeout(() => reject(new Error("event stream did not open")), 30000);
       es.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
       es.addEventListener("error", () => { clearTimeout(timer); reject(new Error("event stream failed")); }, { once: true });
     });
