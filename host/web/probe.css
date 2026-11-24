@@ -1,0 +1,36 @@
+/* RelayPilot carrier probe (#13 S0/S1). Values come only from the token sheet
+   served single-source as shared.css (design/prototype/shared.css). */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+.probe { max-width: 760px; margin: 0 auto; padding: 32px 24px 48px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.tag {
+  font-size: 12px;
+  color: var(--mute);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 10px;
+  vertical-align: middle;
+}
+.status { color: var(--mute); margin: 8px 0 16px; min-height: 1.5em; }
+.status.ok { color: var(--ok); }
+.status.bad { color: var(--danger); }
+.steps { list-style: none; margin: 0; padding: 0; }
+.steps li {
+  display: flex;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.steps li .mark { width: 1.4em; flex: none; }
+.steps li.ok .mark { color: var(--ok); }
+.steps li.bad .mark { color: var(--danger); }
+.steps li .detail { color: var(--mute); margin-left: auto; text-align: right; }
+.note { color: var(--mute); font-size: 12px; margin-top: 20px; }
+code { font-family: ui-monospace, Consolas, monospace; }

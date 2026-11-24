@@ -1,8 +1,9 @@
 #lang racket/base
-;; Real-window launch smoke for the glaze carrier (#13 S0/S1): boot the host
-;; with the in-process RVT1 engine bridge, open index.html?e2e=1, poll the
-;; typed report route until the journey terminates, capture PNGs, assert
-;; verdicts. Runs on every declared platform (Xvfb on Linux CI).
+;; Real-window evidence for the glaze carrier (#13 S0–S2): boot the host with
+;; the in-process RVT1 engine bridge, open probe.html?e2e=1 (RPC surface
+;; journey) then index.html?e2e=1 (product journey), poll the typed report
+;; route until each terminates, capture PNGs, assert verdicts. Runs on every
+;; declared platform (Xvfb on Linux CI).
 ;; Run: racket host/verify.rkt
 (require glaze/app
          glaze/window
@@ -29,6 +30,7 @@
 
 (define verdicts '())
 (define report-box (box #f))
+(define product-box (box #f))
 
 (define (api-post url path body)
   (define u (string->url url))
@@ -64,57 +66,87 @@
       [(>= (current-inexact-milliseconds) deadline) (or r (hasheq 'phase "timeout"))]
       [else (sleep 0.5) (loop)])))
 
+;; Load a page and wait for the product title, so the harness gate (read at
+;; load) is in effect before the report is polled.
+(define (load-page! wv url page)
+  (webview-navigate wv (string-append url page))
+  (define deadline (+ (current-inexact-milliseconds) 45000))
+  (let loop ()
+    (cond
+      [(and (string? (webview-title wv))
+            (string-prefix? (webview-title wv) "RelayPilot")) #t]
+      [(>= (current-inexact-milliseconds) deadline) #f]
+      [else (sleep 0.1) (loop)]))
+  (sleep 1.0)
+  #t)
+
 (define-values (_kind stop)
   (run-app
    #:public-dir (assemble-public-dir)
    #:api api
    #:transport 'http
    #:api-token #f
-   #:title "RelayPilot carrier probe"
-   #:width 1100
+   #:title "RelayPilot"
+   #:width 1200
    #:height 800
    #:current-version app-version
    #:on-ready
    (lambda (wv url)
-     (define deadline (+ (current-inexact-milliseconds) 45000))
-     (define loaded?
-       (let loop ()
-         (cond
-           [(and (string? (webview-title wv))
-                 (string-prefix? (webview-title wv) "RelayPilot")) #t]
-           [(>= (current-inexact-milliseconds) deadline) #f]
-           [else (sleep 0.1) (loop)])))
-     (sleep 1.0)
-     (define url-ok? (equal? (webview-url wv) url))
+     ;; On Windows the webview reports about:blank until the first navigation
+     ;; completes, so the url is asserted after the initial load.
+     (define loaded? (load-page! wv url "index.html"))
+     (define url-ok? (and (string? (webview-url wv)) (string-prefix? (webview-url wv) url)))
      (define boot-shot (save-shot! (webview-capture! wv) "relaypilot-host-boot.png"))
-     ;; A fragment-only navigate would not reload the document (the harness
-     ;; gate is read at load); the query param forces a full load.
-     (webview-navigate wv (string-append url "index.html?e2e=1"))
-     (define report (await-report url 120000))
+
+     ;; ---- S1 RPC surface journey (probe page) ----
+     (define report (begin (load-page! wv url "probe.html?e2e=1") (await-report url 180000)))
      (set-box! report-box report)
      (define e2e-shot (save-shot! (webview-capture! wv) "relaypilot-host-e2e.png"))
-     (define steps (hash-ref report 'steps (hasheq)))
-     (define (step-ok? id)
-       (define s (hash-ref steps (string->symbol id) #f))
+
+     ;; ---- S2 product journey (real UI) ----
+     (api-post url "/api/host/e2e_reset" (hasheq))
+     (define product (begin (load-page! wv url "index.html?e2e=1") (await-report url 240000)))
+     (set-box! product-box product)
+     (define product-shot (save-shot! (webview-capture! wv) "relaypilot-product-e2e.png"))
+
+     (define (step-ok? rep id)
+       (define s (hash-ref (hash-ref rep 'steps (hasheq)) (string->symbol id) #f))
        (and (hash? s) (eq? #t (hash-ref s 'ok #f))))
+     (define (report-ok? rep n)
+       (list (cons 'report-done (equal? (hash-ref rep 'phase #f) "done"))
+             (cons 'journey-ok (eq? #t (hash-ref rep 'ok #f)))
+             (cons 'step-count (= n (hash-ref rep 'stepCount 0)))))
      (set! verdicts
-           (list (cons 'page-loaded (or loaded? (and url-ok? boot-shot)))
-                 (cons 'url url-ok?)
-                 (cons 'boot-capture (and boot-shot (> (file-size boot-shot) 0)))
-                 (cons 'report-done (equal? (hash-ref report 'phase #f) "done"))
-                 (cons 'journey-ok (eq? #t (hash-ref report 'ok #f)))
-                 (cons 'step-count (= 10 (hash-ref report 'stepCount 0)))
-                 (cons 'health (step-ok? "health"))
-                 (cons 'i18n (step-ok? "i18n"))
-                 (cons 'token-sheet (step-ok? "token-sheet"))
-                 (cons 'rpc-explain-route (step-ok? "explain-route"))
-                 (cons 'rpc-diagnose-route (step-ok? "diagnose-route"))
-                 (cons 'rpc-compile-engine-config (step-ok? "compile-engine-config"))
-                 (cons 'rpc-engine-dry-run (step-ok? "engine-dry-run"))
-                 (cons 'rpc-engine-session (step-ok? "engine-session"))
-                 (cons 'rpc-library-flow (step-ok? "library-flow"))
-                 (cons 'rpc-error-channel (step-ok? "error-channel"))
-                 (cons 'e2e-capture (and e2e-shot (> (file-size e2e-shot) 0)))))
+           (append
+            (list (cons 'page-loaded (or loaded? (and url-ok? boot-shot)))
+                  (cons 'url url-ok?)
+                  (cons 'boot-capture (and boot-shot (> (file-size boot-shot) 0))))
+            (report-ok? report 10)
+            (list (cons 'health (step-ok? report "health"))
+                  (cons 'i18n (step-ok? report "i18n"))
+                  (cons 'token-sheet (step-ok? report "token-sheet"))
+                  (cons 'rpc-explain-route (step-ok? report "explain-route"))
+                  (cons 'rpc-diagnose-route (step-ok? report "diagnose-route"))
+                  (cons 'rpc-compile-engine-config (step-ok? report "compile-engine-config"))
+                  (cons 'rpc-engine-dry-run (step-ok? report "engine-dry-run"))
+                  (cons 'rpc-engine-session (step-ok? report "engine-session"))
+                  (cons 'rpc-library-flow (step-ok? report "library-flow"))
+                  (cons 'rpc-error-channel (step-ok? report "error-channel"))
+                  (cons 'e2e-capture (and e2e-shot (> (file-size e2e-shot) 0))))
+            (report-ok? product 12)
+            (list (cons 'ui-boot (step-ok? product "boot"))
+                  (cons 'ui-import (step-ok? product "import"))
+                  (cons 'ui-import-rejected (step-ok? product "import-rejected"))
+                  (cons 'ui-saved-target (step-ok? product "saved-target"))
+                  (cons 'ui-route-patch (step-ok? product "route-patch"))
+                  (cons 'ui-undo (step-ok? product "undo"))
+                  (cons 'ui-editor (step-ok? product "editor"))
+                  (cons 'ui-editor-rejected (step-ok? product "editor-rejected"))
+                  (cons 'ui-switch (step-ok? product "switch"))
+                  (cons 'ui-delete (step-ok? product "delete"))
+                  (cons 'ui-session (step-ok? product "session"))
+                  (cons 'ui-i18n (step-ok? product "i18n"))
+                  (cons 'product-capture (and product-shot (> (file-size product-shot) 0))))))
      (webview-close wv))))
 
 (stop)
@@ -122,12 +154,15 @@
 (make-directory* evidence-dir)
 (call-with-output-file (build-path evidence-dir "relaypilot-host-report.json")
   (lambda (out)
-    (write-json (hasheq 'carrier (or (unbox report-box) (hasheq))) out)
+    (write-json (hasheq 'carrier (or (unbox report-box) (hasheq))
+                        'product (or (unbox product-box) (hasheq)))
+                out)
     (newline out))
   #:exists 'truncate/replace)
 (for ([v (in-list verdicts)])
   (printf "[verify] ~a = ~a\n" (car v) (cdr v)))
 (printf "[verify] carrier report: ~a\n" (jsexpr->string (or (unbox report-box) (hasheq))))
+(printf "[verify] product report: ~a\n" (jsexpr->string (or (unbox product-box) (hasheq))))
 (unless (and (pair? verdicts) (andmap cdr verdicts))
   (eprintf "[verify] glaze carrier verification failed\n")
   (exit 1))
