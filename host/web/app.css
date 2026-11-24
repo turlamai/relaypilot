@@ -1,0 +1,17 @@
+/* RelayPilot product UI (#13 S2). Everything visual comes from the token
+   sheet served single-source as shared.css (design/prototype/shared.css);
+   this file only adds the two S2 composites the prototype did not have. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s2) var(--s6);
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--mute);
+  font-size: var(--tiny);
+}
+.notice .od-icon { --od-icon-size: 16px; margin-top: 2px; }
+.add-target { margin-top: var(--s4); }
+.row-actions { display: inline-flex; gap: var(--s4); flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.footer span { overflow-wrap: anywhere; }
