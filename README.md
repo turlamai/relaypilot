@@ -105,8 +105,7 @@ relaypilot/
 ├── tests/                     # domain, adapter, runtime and RPC contract tests
 ├── examples/                  # synthetic, non-secret profile and rules
 ├── scripts/                   # CLI launchers, release/notice checks
-├── macos-host/ windows/ linux/# first-party desktop hosts (planned)
-├── apple/ android/            # mobile/tv tunnel hosts (planned)
+├── host/                      # glaze carrier + web UI (the desktop host)
 ├── docs/                      # product and engineering contracts
 └── site/                      # static product site
 ```

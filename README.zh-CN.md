@@ -105,8 +105,7 @@ relaypilot/
 ├── tests/                     # 领域、adapter、runtime 与 RPC 契约测试
 ├── examples/                  # 合成的非保密 profile 与规则
 ├── scripts/                   # CLI 启动器、发布身份与 notice 检查
-├── macos-host/ windows/ linux/# 第一方桌面 host（计划中）
-├── apple/ android/            # 移动/TV 隧道 host（计划中）
+├── host/                      # glaze 载体 + Web UI（桌面宿主）
 ├── docs/                      # 产品与工程契约
 └── site/                      # 静态产品站
 ```

@@ -20,7 +20,7 @@ RelayPilot's desktop UI is re-lined from rivet native hosts to **glaze** (system
 - The Racket control plane (`racket/`), `rivet-schema.json`, the CLI and `shared/i18n` are **Keep**: no engine, schema or RPC changes ride the re-line.
 - The web UI is evolved from `design/prototype/` (the UI baseline); tokens single-source in `design/prototype/shared.css`, strings single-source in `shared/i18n`. Never commit copies into `host/web/`.
 - `host/main.rkt` `api` is the route surface; `glaze-schema.json` is its committed baseline (`raco glaze schema write` + `check`). Harness routes stay inert unless `RELAYPILOT_E2E=1`.
-- The three native legs (`macos-host/`, `windows/`, `linux/`) are stubs scheduled for retirement in S4 — do not add to them. The "Rivet boundary" section below still governs the engine side and stays in force for RVT1/embedding/runtime.
+- The former rivet native legs (`macos-host/`, `windows/`, `linux/`) and the `apple/`, `android/` placeholder dirs were retired in S4 (2026-11-24, supersedes the fold task in #11): the glaze carrier is the only desktop host, and mobile stays native per the family rule when its roadmap item starts. History on `main` keeps them (`git log -- macos-host/`). The "Rivet boundary" section below still governs the engine side and stays in force for RVT1/embedding/runtime.
 
 ## Current owner decision — 2026-11-18 quality-first
 
