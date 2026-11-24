@@ -1,0 +1,91 @@
+name: packaged launch smoke
+
+# relaypilot#13 S5: build the glaze package on every declared platform and
+# launch the packaged program (not `racket host/main.rkt`). This is evidence
+# only: nothing is uploaded as a release asset, no tag is made, and a
+# surviving process does not prove the page rendered (the real-window
+# journeys are host-ci.yml). Pins mirror host-ci.yml.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GLAZE_PIN: e2731a3a1440c9cf705f2c0e77b945a3dec05e79
+  GLAZE_RIVET_PIN: 0db8b76396f70dde6d0a9c7935a0bd91d8c066f3
+  RIVET_PIN: 0db8b76396f70dde6d0a9c7935a0bd91d8c066f3
+  WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+  SURVIVAL_SECONDS: '8'
+
+concurrency:
+  group: packaged-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: packaged launch (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+          # Auto-detection installs x64 on arm64 runners (Exec format error);
+          # always pass the matrix architecture explicitly.
+          architecture: ${{ contains(matrix.os, 'arm') && 'arm64' || 'x64' }}
+      - name: Export trusted Mozilla CA roots for Windows Racket
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'relaypilot-mozilla-roots.pem'
+          $js = 'const tls=require("node:tls"),fs=require("node:fs"); if(tls.rootCertificates.length<50) process.exit(2); fs.writeFileSync(process.argv[1],tls.rootCertificates.join("\n")+"\n",{flag:"wx"});'
+          node -e $js $bundle
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundle -PathType Leaf)) {
+            throw "Unable to export CA roots; refusing insecure TLS fallback"
+          }
+          "RELAYPILOT_CI_CA_BUNDLE=$bundle" >> $env:GITHUB_ENV
+      - name: Install pinned Keel + Rivet + Glaze (Windows, verified TLS)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: racket scripts/ci-install-windows-deps.rkt
+      - name: Install pinned Rivet + Glaze (catalog)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${GLAZE_RIVET_PIN}"
+          raco pkg install --auto --no-docs "https://github.com/turlamai/glaze.git#${GLAZE_PIN}"
+      - name: Linux webview runtime deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+          sudo apt-get install -y -o DPkg::Lock::Timeout=120 -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 libgtk-3-0 libwebkit2gtk-4.1-0 xvfb dbus
+      # Identity comes from racket/core/version.rkt (the release identity the
+      # version gate checks), never from this file.
+      - name: Build the package
+        shell: bash
+        run: |
+          read -r VERSION IDENTIFIER <<< "$(racket -e '(require "racket/core/version.rkt") (printf "~a ~a" app-version app-identifier)')"
+          echo "version=$VERSION identifier=$IDENTIFIER"
+          raco glaze build \
+            --name relaypilot \
+            --version "$VERSION" \
+            --publisher "Turing Lambda" \
+            --identifier "$IDENTIFIER" \
+            --entry host/main.rkt \
+            --out dist
+      - name: Packaged launch survives (Linux, Xvfb + session bus)
+        if: runner.os == 'Linux'
+        run: bash host/linux-verify.sh raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
+      - name: Packaged launch survives
+        if: runner.os != 'Linux'
+        run: raco glaze measure startup --seconds "$SURVIVAL_SECONDS"
