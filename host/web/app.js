@@ -24,7 +24,9 @@
     shield: "M12 3l8 3v6c0 5-8 9-8 9S4 17 4 12V6z M8 12l3 3 5-6",
     info: "M12 11v6 M12 7h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
     plus: "M12 5v14 M5 12h14",
-    warning: "M12 3L2 21h20z M12 9v5 M12 17h.01"
+    warning: "M12 3L2 21h20z M12 9v5 M12 17h.01",
+    search: "M20 20l-5-5 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
+    copy: "M9 9h12v12H9z M15 5V3H3v12h2"
   };
   const icon = (name) =>
     `<svg class="od-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.info}"/></svg>`;
@@ -78,24 +80,30 @@
     session: "idle",        // idle | starting | running
     handle: null,           // { sessionId, inboundPort, engineVersion }
     targets: [],
+    expectations: {},     // domain -> expected policy id (comparison only)
+    redact: true,          // diagnostic export hides the target + trace id
     routes: {},             // domain -> RouteDecision | null
     events: [],
     undo: null,
     loadError: null,
     busy: false
   };
+  const trace = { input: "", target: "", decision: null, inspecting: false, lastExport: "" };
   try {
     if (!e2e) {
       const saved = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
       if (Array.isArray(saved.targets)) state.targets = saved.targets.filter((x) => typeof x === "string");
+      if (saved.expectations && typeof saved.expectations === "object") state.expectations = saved.expectations;
+      if (typeof saved.redact === "boolean") state.redact = saved.redact;
     }
   } catch (_) { /* in-memory list remains available */ }
   function storePreferences() {
     if (e2e) return;
-    try { localStorage.setItem(PREF_KEY, JSON.stringify({ targets: state.targets })); } catch (_) { /* session only */ }
+    try { localStorage.setItem(PREF_KEY, JSON.stringify({ targets: state.targets, expectations: state.expectations, redact: state.redact })); } catch (_) { /* session only */ }
   }
 
-  const names = { connect: "nav.overview", profiles: "nav.profiles" };
+  const names = { connect: "nav.overview", trace: "nav.trace", profiles: "nav.profiles" };
+  const navIcons = { connect: "grid", trace: "route", profiles: "file" };
   const active = () => state.profiles.find((p) => p.id === state.activeId) || null;
   const selected = () => state.profiles.find((p) => p.id === state.selected) || null;
   const running = () => state.session === "running";
@@ -145,9 +153,15 @@
           state.routes[domain] = await rpc("explain-route", { profileJson: state.activeRaw, domain, ip: "", port: 443, network: "tcp" });
         } catch (_) { state.routes[domain] = null; }
       }));
+      if (trace.target) {
+        try { trace.decision = await explain(trace.target); } catch (_) { trace.decision = null; }
+      }
+    } else {
+      trace.decision = null;
     }
     if (state.selected) await loadDetail(state.selected, false);
   }
+  const explain = (domain) => rpc("explain-route", { profileJson: state.activeRaw, domain, ip: "", port: 443, network: "tcp" });
   async function loadDetail(id, rerender = true) {
     state.detail = null;
     try {
@@ -183,7 +197,7 @@
   function shell(content) {
     const pending = state.profiles.filter((p) => p.status !== "valid").length;
     const nav = Object.entries(names).map(([id, key]) =>
-      `<button type="button" class="nav-button ${state.view === id ? "active" : ""}" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ""}>${icon({ connect: "grid", profiles: "file" }[id])}<span>${esc(t(key))}</span>${id === "profiles" ? `<span class="nav-meta">${pending ? pending + " " + esc(t("pending.title")) : state.profiles.length}</span>` : ""}</button>`).join("");
+      `<button type="button" class="nav-button ${state.view === id ? "active" : ""}" data-view="${id}" ${state.view === id ? 'aria-current="page"' : ""}>${icon(navIcons[id])}<span>${esc(t(key))}</span>${id === "profiles" ? `<span class="nav-meta">${pending ? pending + " " + esc(t("pending.title")) : state.profiles.length}</span>` : ""}</button>`).join("");
     const p = active();
     const footerLeft = `${esc(sessionName())}${p ? " · " + esc(p.name) : ""}`;
     const footerRight = state.root ? `${esc(t("overview.libraryPath"))}: ${esc(state.root)}` : "";
@@ -211,11 +225,14 @@
       : `<button type="button" class="btn primary large" data-action="session" ${busy() || state.busy ? "disabled" : ""}>${icon("power")}${esc(busy() ? t("session.starting.button") : t("session.start"))}</button>`;
     return `<section class="session" aria-label="${esc(t("nav.overview"))}"><div class="session-top"><div class="session-state"><span class="status-emblem ${running() ? "running" : ""}">${icon(running() ? "check" : "power")}</span><div><div class="session-title" role="status">${esc(label)}</div><p class="session-sub">${esc(sub)}</p></div></div>${button}</div>${busy() ? '<div class="progress" aria-label="' + esc(t("session.starting")) + '"><span></span></div>' : ""}<dl class="fact-grid">${facts}</dl></section>`;
   }
+  // Latest decision for a domain: the saved-target route, else the trace view.
+  const decisionFor = (domain) => (trace.target === domain ? trace.decision : state.routes[domain]);
   function pendingSection() {
     const unresolved = state.profiles.filter((p) => p.status !== "valid");
-    const count = unresolved.length;
+    const mismatches = [...new Set([...state.targets, trace.target])].filter((d) => d && state.expectations[d] && decisionFor(d) && decisionFor(d).policy !== state.expectations[d]);
+    const count = unresolved.length + mismatches.length;
     const body = count
-      ? `<div class="list">${unresolved.map((item) => `<button type="button" class="list-row issue-row" data-open-profile="${esc(item.id)}"><span class="issue-symbol">${icon("warning")}</span><span class="od-field od-fill"><strong>${esc(item.name)}</strong><span class="hint">${esc(item.issues && item.issues[0] ? item.issues[0].detail : t("pending.invalidHint"))}</span></span><span class="row-action">${esc(t("pending.goProfile"))} ${icon("arrow")}</span></button>`).join("")}</div>`
+      ? `<div class="list">${unresolved.map((item) => `<button type="button" class="list-row issue-row" data-open-profile="${esc(item.id)}"><span class="issue-symbol">${icon("warning")}</span><span class="od-field od-fill"><strong>${esc(item.name)}</strong><span class="hint">${esc(item.issues && item.issues[0] ? item.issues[0].detail : t("pending.invalidHint"))}</span></span><span class="row-action">${esc(t("pending.goProfile"))} ${icon("arrow")}</span></button>`).join("")}${mismatches.map((domain) => `<button type="button" class="list-row issue-row" data-action="inspect-target" data-target="${esc(domain)}"><span class="issue-symbol">${icon("route")}</span><span class="od-field od-fill"><strong class="mono">${esc(domain)}</strong><span class="hint">${esc(t("pending.mismatchHint", policyName(state.expectations[domain]), policyName(decisionFor(domain).policy)))}</span></span><span class="row-action">${esc(t("pending.viewDiff"))} ${icon("arrow")}</span></button>`).join("")}</div>`
       : `<div class="clear-state">${icon("check")}<div class="od-field"><strong>${esc(t("pending.clear.title"))}</strong><span>${esc(t("pending.clear.body"))}</span></div></div>`;
     return `<section class="section-block"><div class="section-head"><h2>${esc(t("pending.title"))}</h2><span class="badge ${count ? "warn" : "ok"}">${icon(count ? "warning" : "check")}${esc(count ? t("pending.count", count) : t("pending.clear"))}</span></div>${body}</section>`;
   }
@@ -223,11 +240,12 @@
     const rows = state.targets.length
       ? state.targets.map((domain) => {
           const r = state.routes[domain];
+          const expected = state.expectations[domain] || "";
           const result = !state.activeId ? t("policy.unset") : r ? t("targets.result", policyName(r.policy), policyName(r.outbound)) : "…";
-          return `<div class="list-row" data-target-row="${esc(domain)}"><span class="od-field od-fill"><strong class="mono">${esc(domain)}</strong><span class="hint" data-route="${esc(domain)}">${esc(result)}</span></span><span class="od-cluster row-actions">${state.activeId ? `<button type="button" class="action-link" data-action="patch" data-target="${esc(domain)}">${esc(t("targets.patch"))}</button>` : ""}<button type="button" class="action-link" data-action="remove-target" data-target="${esc(domain)}">${esc(t("trace.removeTarget"))}</button></span></div>`;
+          return `<div class="list-row" data-target-row="${esc(domain)}"><button type="button" class="od-field od-fill target-link" data-action="inspect-target" data-target="${esc(domain)}"><strong class="mono">${esc(domain)}</strong><span class="hint" data-route="${esc(domain)}">${esc(result)}</span>${expected ? `<span class="small ${expected === (r && r.policy) ? "muted" : ""}">${esc(expected === (r && r.policy) ? t("target.match") : t("target.mismatch"))}</span>` : ""}</button><span class="od-cluster row-actions">${state.activeId ? `<button type="button" class="action-link" data-action="patch" data-target="${esc(domain)}">${esc(t("targets.patch"))}</button>` : ""}<button type="button" class="action-link" data-action="remove-target" data-target="${esc(domain)}">${esc(t("trace.removeTarget"))}</button></span></div>`;
         }).join("")
       : `<p class="empty">${esc(t("targets.empty"))}</p>`;
-    return `<section><div class="section-head"><h2>${esc(t("targets.title"))}</h2></div>${rows}<form class="search-form add-target" data-form="add-target"><div class="field"><label for="target-add">${esc(t("trace.field"))}</label><input id="target-add" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="${esc(t("targets.add.placeholder"))}" aria-describedby="target-add-error"></div><button type="submit" class="btn">${esc(t("targets.add"))}</button></form><p id="target-add-error" class="field-error" role="alert" hidden></p></section>`;
+    return `<section><div class="section-head"><h2>${esc(t("targets.title"))}</h2><button type="button" class="action-link" data-view="trace">${esc(t("targets.inspectOthers"))}</button></div>${rows}<form class="search-form add-target" data-form="add-target"><div class="field"><label for="target-add">${esc(t("trace.field"))}</label><input id="target-add" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="${esc(t("targets.add.placeholder"))}" aria-describedby="target-add-error"></div><button type="submit" class="btn">${esc(t("targets.add"))}</button></form><p id="target-add-error" class="field-error" role="alert" hidden></p></section>`;
   }
   function eventsSection() {
     const rows = state.events.length
@@ -235,6 +253,68 @@
       : `<p class="empty">${esc(t("events.empty"))}</p>`;
     return `<section><div class="section-head"><h2>${esc(t("events.title"))}</h2><span class="small muted">${esc(t("events.recentFirst"))}</span></div>${rows}</section>`;
   }
+  // ---- trace (S3) -------------------------------------------------------------
+  // The decision comes from explain-route; the page only lays it out.
+  function causeFor(d) {
+    const rules = (state.activeJson && state.activeJson.rules) || [];
+    const rule = d && d.ruleIndex > 0 ? parseRule(rules[d.ruleIndex - 1] || "") : null;
+    if (!rule || !rule.kind) return t("trace.cause.none");
+    if (rule.kind === "FINAL") return t("trace.cause.final");
+    if (rule.kind === "DOMAIN") return t("trace.cause.exact", d.ruleIndex);
+    if (rule.kind === "DOMAIN-SUFFIX") return t("trace.cause.suffix", d.ruleIndex);
+    return t("trace.cause.cidr", d.ruleIndex);
+  }
+  async function inspectTarget(domain) {
+    if (!validDomain(domain)) return;
+    trace.target = domain;
+    trace.input = domain;
+    trace.decision = state.activeRaw ? await explain(domain) : null;
+  }
+  function traceView() {
+    const p = active();
+    const d = trace.decision;
+    const target = trace.target;
+    const expected = state.expectations[target] || "";
+    const mismatch = !!(expected && d && expected !== d.policy);
+    const targets = p ? (p.targets || []) : [];
+    const form = `<form class="search-form" data-form="inspect"><div class="field"><label for="target">${esc(t("trace.field"))}</label><input id="target" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="${esc(trace.input)}" aria-describedby="target-error" placeholder="${esc(t("targets.add.placeholder"))}"></div><button type="submit" class="btn primary" ${state.busy ? "disabled" : ""}>${icon("search")}${esc(t("trace.inspect"))}</button></form><p id="target-error" class="field-error" role="alert" hidden></p><div class="examples"><span>${esc(t("targets.title"))}</span>${state.targets.map((x) => `<button type="button" class="action-link" data-action="inspect-target" data-target="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
+    if (!d) return heading(esc(t("nav.trace")), esc(t("trace.subtitle"))) + form + `<p class="empty">${esc(t("trace.prompt"))}</p>`;
+    const rules = (state.activeJson && state.activeJson.rules) || [];
+    const ruleText = d.ruleIndex > 0 ? (rules[d.ruleIndex - 1] || "") : "";
+    const steps = (d.steps || []).map((s, i) => `<div class="trace-step"><span class="step-num">${String(i + 1).padStart(2, "0")}</span><div><p class="mono small">${esc(s)}</p></div></div>`).join("");
+    const canPatch = p && p.status === "valid";
+    return heading(esc(t("nav.trace")), esc(t("trace.subtitle"))) + form + `
+      <section aria-label="${esc(t("trace.steps.title"))}">
+        <div class="result-heading"><h2 class="mono">${esc(target)}</h2><span class="badge ${expected ? (mismatch ? "warn" : "ok") : ""}">${icon(expected ? (mismatch ? "warning" : "check") : "info")}${esc(t(expected ? (mismatch ? "trace.mismatch" : "trace.match") : "trace.noExpectationBadge"))}</span></div>
+        <div class="comparison"><div class="expectation"><label for="expected-policy">${esc(t("trace.expectation.label"))}</label><select id="expected-policy"><option value="">${esc(t("trace.expectation.none"))}</option>${targets.map((x) => `<option value="${esc(x)}" ${expected === x ? "selected" : ""}>${esc(policyName(x))} · ${esc(x)}</option>`).join("")}</select><p>${esc(t("trace.expectation.note"))}</p></div><div class="actual-result"><span class="comparison-label">${esc(t("trace.actual"))}</span><strong>${esc(policyName(d.policy))}</strong><span class="mono">${esc(d.outbound)}</span></div></div>
+        <div class="route-explanation ${mismatch ? "attention" : ""}"><div class="od-field od-fill"><strong>${esc(t(mismatch ? "trace.rule.diffSource" : ruleText ? "trace.rule.decides" : "trace.rule.supplement"))}</strong><span>${esc(causeFor(d))}</span><code>${esc(ruleText || t("policy.unset"))}</code></div>${canPatch ? `<button type="button" class="btn ${mismatch ? "primary" : ""}" data-action="patch" data-target="${esc(target)}">${esc(t("targets.patch"))}</button>` : ""}</div>
+        ${state.targets.includes(target) ? "" : `<button type="button" class="action-link section-block" data-action="save-target">${esc(t("trace.saveTarget"))}</button>`}
+        <div class="section-head section-block"><h2>${esc(t("trace.steps.title"))}</h2><span class="small muted">${esc(t("trace.steps.note"))}</span></div>
+        <div class="trace-list">${steps || `<p class="empty">${esc(causeFor(d))}</p>`}</div>
+        ${(d.warnings || []).map((w) => `<div class="note warn section-block">${icon("warning")}<div>${esc(w)}</div></div>`).join("")}
+        <details class="technical section-block"><summary>${esc(t("trace.technical.title"))}</summary><dl><dt>${esc(t("trace.technical.traceId"))}</dt><dd>${esc(d.traceId)}</dd><dt>${esc(t("trace.technical.profile"))}</dt><dd>${esc(p ? p.name : "—")}</dd><dt>${esc(t("trace.technical.execution"))}</dt><dd>${esc(t("trace.technical.execution.value"))}</dd><dt>${esc(t("trace.technical.artifact"))}</dt><dd>${esc(t("trace.technical.noArtifact"))}</dd></dl>
+          <div class="settings-row"><div class="od-field od-fill"><strong id="redact-label">${esc(t("settings.redact"))}</strong><span>${esc(t("settings.redact.desc"))}</span></div><button type="button" class="switch" role="switch" aria-checked="${state.redact}" aria-labelledby="redact-label" data-action="redact"><span>${esc(t(state.redact ? "switch.on" : "switch.off"))}</span>${icon(state.redact ? "check" : "close")}</button></div>
+          <div class="od-cluster"><button type="button" class="btn" data-action="export">${esc(t("settings.export.button"))}</button><button type="button" class="btn" data-action="copy-trace">${icon("copy")}${esc(t("trace.copy"))}</button></div><p class="small muted">${esc(t("settings.export.desc"))}</p></details>
+      </section>`;
+  }
+  async function exportDiagnostic() {
+    const bundle = await rpc("diagnose-route", { profileJson: state.activeRaw, domain: trace.target, ip: "", port: 443, network: "tcp", redact: state.redact });
+    // Destination: the native save panel; under the harness gate a fixture path.
+    const pick = await post(e2e ? "/api/host/e2e_export" : "/api/dialog/save", e2e ? {} : { defaultName: "relaypilot-diagnostic.json" });
+    if (!pick || !pick.path) return;
+    await post("/api/host/write", { path: pick.path, data: bytesToB64(new TextEncoder().encode(bundle)) });
+    trace.lastExport = pick.path;
+    event(t("settings.export.done"));
+    notify(t("settings.export.done"));
+  }
+  const bytesToB64 = (bytes) => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); };
+  async function copyTrace() {
+    const d = trace.decision;
+    const text = `RelayPilot ${state.version}\n${t("trace.technical.traceId")}: ${d.traceId}\n${t("trace.field")}: ${trace.target}\n${t("trace.actual")}: ${d.policy} → ${d.outbound}\n${t("trace.technical.execution")}: ${t("trace.technical.execution.value")}`;
+    try { await navigator.clipboard.writeText(text); notify(t("trace.copied")); }
+    catch (_) { openDialog(esc(t("trace.copy")), esc(t("trace.copyFallback")), `<textarea aria-label="${esc(t("trace.copy"))}" readonly>${esc(text)}</textarea><div class="dialog-actions"><button type="button" class="btn" data-action="close-modal">${esc(t("close"))}</button></div>`); $("textarea", modal).select(); }
+  }
+
   function overview() {
     return heading(esc(t("nav.overview")), esc(t("overview.subtitle"))) + sessionSection() + pendingSection() +
       `<div class="split section-block">${targetsSection()}${eventsSection()}</div>`;
@@ -282,7 +362,7 @@
     document.title = "RelayPilot — " + t(names[state.view]);
     root.innerHTML = shell(state.loadError
       ? `<div class="note error" role="alert">${icon("warning")}<div><strong>${esc(t("library.loadFailed", state.loadError))}</strong></div><button type="button" class="btn" data-action="retry">${esc(t("common.retry"))}</button></div>`
-      : state.root ? (state.view === "connect" ? overview() : profiles()) : `<p class="empty">${esc(t("common.loading"))}</p>`);
+      : state.root ? ({ connect: overview, trace: traceView, profiles: profiles })[state.view]() : `<p class="empty">${esc(t("common.loading"))}</p>`);
     if (focusId) { const el = $("#" + focusId, root); if (el) el.focus(); }
   }
   function renderResults() { const el = $("#profile-results", root); if (el) el.innerHTML = profileResults(); }
@@ -394,9 +474,18 @@
   function removeTarget(domain) {
     state.targets = state.targets.filter((d) => d !== domain);
     delete state.routes[domain];
+    delete state.expectations[domain];
     storePreferences();
     event(t("trace.removedTarget"));
     render();
+  }
+  function inspectFromForm() {
+    const input = $("#target", root);
+    const value = (input.value || "").trim().toLowerCase().replace(/\.$/, "");
+    const error = $("#target-error", root);
+    if (!validDomain(value)) { error.textContent = t("trace.error.domain"); error.hidden = false; input.setAttribute("aria-invalid", "true"); input.focus(); return; }
+    error.hidden = true;
+    run(() => inspectTarget(value));
   }
 
   // route patch (single target, applied to the active profile)
@@ -539,6 +628,15 @@
       case "edit-rule": patchDialog(patch.target); return;
       case "apply-patch": await run(applyPatch); return;
       case "remove-target": removeTarget(button.dataset.target); return;
+      case "inspect-target": closeDialog(); state.view = "trace"; run(() => inspectTarget(button.dataset.target)); return;
+      case "save-target": {
+        const domain = trace.target;
+        if (!state.targets.includes(domain)) { state.targets = [...state.targets, domain].sort(); storePreferences(); }
+        event(t("trace.savedTarget")); notify(t("trace.savedTarget")); render(); return;
+      }
+      case "export": await run(exportDiagnostic); return;
+      case "copy-trace": await copyTrace(); return;
+      case "redact": state.redact = !state.redact; storePreferences(); render(); $('[data-action="redact"]', root).focus(); return;
       case "import": importDialog(); return;
       case "preview-import": await run(previewImport); return;
       case "back-import": importDialog({ name: draft.name, source: draft.source }); return;
@@ -564,14 +662,24 @@
     if (b.dataset.action) { handle(b.dataset.action, b).catch(fail); }
   });
   document.addEventListener("submit", (e) => {
-    if (e.target.dataset && e.target.dataset.form === "add-target") { e.preventDefault(); addTarget(); }
+    const form = e.target.dataset && e.target.dataset.form;
+    if (form === "add-target") { e.preventDefault(); addTarget(); }
+    if (form === "inspect") { e.preventDefault(); inspectFromForm(); }
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "target") trace.input = e.target.value;
     if (e.target.id === "profile-search") { state.query = e.target.value; renderResults(); $("#profile-search", root).focus(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "profile-filter") { state.filter = e.target.value; renderResults(); $("#profile-filter", root).focus(); }
     if (e.target.id === "import-ack") { const b = $('[data-action="confirm-import"]', modal); if (b) b.disabled = !e.target.checked; }
+    if (e.target.id === "expected-policy") {
+      const value = e.target.value;
+      if (value) state.expectations[trace.target] = value; else delete state.expectations[trace.target];
+      storePreferences();
+      render();
+      $("#expected-policy", root).focus();
+    }
   });
 
   // ---- boot -------------------------------------------------------------------
@@ -588,7 +696,7 @@
       render();
       if (e2e && ctx.e2e === "true") {
         const harness = await import("./e2e.js");
-        harness.runJourney({ state, rpc, get, t, refresh, render, event });
+        harness.runJourney({ state, rpc, get, t, refresh, render, event, trace });
       }
     } catch (e) {
       state.loadError = (e && e.message) || String(e);

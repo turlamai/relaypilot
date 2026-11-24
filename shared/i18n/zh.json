@@ -246,6 +246,8 @@
   "targets.add": "添加目标",
   "targets.duplicate": "这个目标已在列表中。",
   "targets.patch": "修改这条路由",
+  "trace.prompt": "输入目标域名开始检查；结果由引擎按当前配置计算。",
+  "trace.copyFallback": "浏览器未允许直接复制，请选择下方文本手动复制。",
   "targets.result": "%@ → %@",
   "events.empty": "还没有操作记录。",
   "session.port": "回环端口 %lld",

@@ -19,7 +19,12 @@
 ;; S2 (overview/connect + profiles): web/app.js is the product UI, evolved
 ;; from design/prototype and driven only through these routes; api/host/context
 ;; hands the page the per-user library root (single source, not an RPC input
-;; the user could mistype). Trace lands in S3, settings/tray in S4.
+;; the user could mistype).
+;;
+;; S3 (trace + diagnostics): the page exports a diagnostic bundle through
+;; api/host/write to a destination the user picked in the native save panel
+;; (glaze/dialogs); the capability grant scopes both to the local user.
+;; Settings/tray land in S4.
 ;;
 ;; Carrier decision (#13, declared on the issue): production runs glaze's
 ;; first-class HTTP adapter on 127.0.0.1 with a per-launch token; the native
@@ -32,9 +37,13 @@
 (require glaze/app        ; run-app
          glaze/api        ; POST, GET, exn:fail:glaze:bad-param
          glaze/api-macros ; define-api-routes
+         glaze/capability ; make-capability
+         glaze/dialogs    ; make-dialog-routes (native save panel)
          glaze/types      ; GString, GInt64, GBool, GValue
          racket/file
+         racket/path
          racket/runtime-path
+         net/base64
          json
          (prefix-in engine: "../racket/backend.rkt")
          (prefix-in core: "../racket/core/version.rkt")
@@ -44,7 +53,7 @@
 ;; start-engine! wires the codec to the in-process RVT1 transport — the
 ;; app entry and the real-window verifier both call it; schema checks load
 ;; this module without starting anything.
-(provide api start-engine! stop-engine! assemble-public-dir app-version)
+(provide api start-engine! stop-engine! assemble-public-dir app-version host-capability)
 
 (define-runtime-path schema-path "../rivet-schema.json")
 (define schema (call-with-input-file schema-path read-json))
@@ -192,6 +201,25 @@
   [(POST "api/host/e2e_reset" #:returns GBool)
    (e2eReset)
    (when (e2e-enabled?) (set-box! e2e-report-box #f) (set-box! e2e-root-box #f))
+   #t]
+
+  ;; ---- diagnostic export (#13 S3) ----------------------------------------
+  ;; Export journey fixture: a destination in the temp dir plus a read-back,
+  ;; so the page can prove what was written without any file access of its own.
+  [(POST "api/host/e2e_export" #:returns GValue)
+   (e2eExport)
+   (unless (e2e-enabled?) (bad-param "export fixture: harness not enabled"))
+   (hasheq 'path (path->string (make-temporary-file "relaypilot-diagnostic-~a.json")))]
+  [(POST "api/host/e2e_export_read" #:returns GString)
+   (e2eExportRead [path GString])
+   (unless (e2e-enabled?) (bad-param "export fixture: harness not enabled"))
+   (define p (string->path path))
+   (if (file-exists? p) (file->string p) "")]
+  ;; Diagnostic export write; the destination is what the user picked in the
+  ;; native save panel (api/dialog/save). Bytes ride base64 (GString).
+  [(POST "api/host/write" #:returns GBool #:permission 'host:write)
+   (hostWrite [path GString] [data GString])
+   (host-write-bytes path data)
    #t])
 
 ;; ---- product context (#13 S2) ------------------------------------------
@@ -241,7 +269,27 @@
 (define (e2e-enabled?) (equal? (getenv "RELAYPILOT_E2E") "1"))
 (define e2e-report-box (box #f))
 
-(define api (append api-rpc api-host))
+(define api (append api-rpc api-host (make-dialog-routes)))
+
+;; Runtime authority for the production window: the native save panel and the
+;; diagnostic export write. The verifier runs without a capability (open-route
+;; mode) so headless CI needs no interactive grant; the journey picks its
+;; destination through the harness routes above.
+(define host-capability
+  (make-capability "relaypilot" '(dialog:save host:write)))
+
+;; Export target: only what the user chose in the save panel, never an implicit
+;; overwrite of a library file. Atomic replace (sibling temp + rename).
+(define (host-write-bytes path data)
+  (define p (string->path path))
+  (define dir (path-only p))
+  (unless (and dir (directory-exists? dir))
+    (bad-param (format "destination directory missing: ~a" path)))
+  (define tmp (build-path dir (format ".relaypilot-save-~a" (current-inexact-milliseconds))))
+  (call-with-output-file tmp
+    (lambda (out) (write-bytes (base64-decode (string->bytes/utf-8 data)) out))
+    #:exists 'truncate/replace)
+  (rename-file-or-directory tmp p #t))
 
 (define (host-e2e-report! payload)
   (when (e2e-enabled?) (set-box! e2e-report-box payload))
@@ -321,6 +369,7 @@
      #:width 1200
      #:height 800
      #:current-version app-version
+     #:capability host-capability
      #:app-id "relaypilot"))
   (stop-engine!)
   (stop))

@@ -19,8 +19,8 @@ typed RPC surface to the page.
 - **S0** carrier skeleton: app shell, transport, runtime public dir, i18n route, harness gate, four-OS launch smoke (`host-ci.yml`).
 - **S1** RPC bridge: the 18 RPCs of `rivet-schema.json` exposed 1:1 over `rivet/bridge` (in-process RVT1 pipe pair); `scripts/check-rpc-surface.py` gates the route surface against the schema.
 - **S2** overview/connect + profiles: session start/stop through `engine-dry-run` → `engine-session-*`, saved targets explained by `explain-route`, the single-target route patch (`library-patch-preview/apply`), the rule editor (`library-validate-rules` → `library-update-rules`), import preview/commit, switch and delete. Every mutation offers one-step undo through `library-restore-profile` (switch undo = `library-set-active` back). The page never decides or validates anything itself.
-- **S3–S4** trace + diagnostics export, settings + tray/menu carrier routes, evolved from `design/prototype/`.
-- **S5** acceptance + v0.1.0 line; the rivet stub legs and their CI jobs are retired in S4.
+- **S3** trace + diagnostics: the route check view is `explain-route` laid out (expectation comparison is local and only lists mismatches on the overview), the decision steps are the engine's own `steps` text; diagnostic export = `diagnose-route` → native save panel (`api/dialog/save`) → `api/host/write`, scoped by the `relaypilot` capability (`dialog:save`, `host:write`). Redaction defaults to on.
+- **S4–S5** settings + tray/menu carrier routes evolved from `design/prototype/`; acceptance + v0.1.0 line. The rivet stub legs and their CI jobs are retired in S4.
 
 ## Run
 

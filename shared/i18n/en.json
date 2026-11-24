@@ -246,6 +246,8 @@
   "targets.add": "Add target",
   "targets.duplicate": "This target is already in the list.",
   "targets.patch": "Modify this route",
+  "trace.prompt": "Enter a target domain to start; the engine decides against the active profile.",
+  "trace.copyFallback": "Clipboard access was refused; select the text below to copy it manually.",
   "targets.result": "%@ → %@",
   "events.empty": "No events yet.",
   "session.port": "Loopback port %lld",
