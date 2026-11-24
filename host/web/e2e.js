@@ -311,6 +311,13 @@ export async function runJourney(app) {
     await sleep(60);
     await click(`[data-open-profile="${idA}"]`, dialog());
     assert(!dialog().open && state.view === "profiles" && state.selected === idA, "profile pick " + state.view);
+    // The carrier pushes tray picks over the event stream; open it now.
+    await new Promise((resolve, reject) => {
+      const es = app.connectEvents();
+      const timer = setTimeout(() => reject(new Error("event stream did not open")), 15000);
+      es.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+      es.addEventListener("error", () => { clearTimeout(timer); reject(new Error("event stream failed")); }, { once: true });
+    });
     // The carrier holds the menu the page last posted and runs items itself.
     await sleep(200);
     const held = await get("/api/host/e2e_tray");

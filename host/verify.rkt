@@ -57,10 +57,9 @@
   (with-handlers ([exn:fail? (lambda (_) #f)])
     (string->jsexpr text)))
 
-;; Linux: saving the pixbuf runs the GLib main context on this thread; when
-;; that dispatches a WebKitGTK callback Racket 9.0 can leave atomic mode set
-;; (seen with a live SSE stream, #13 S4) and the next blocking call here or
-;; in the server kills the process. Drop it right after the capture.
+;; Linux: saving the pixbuf runs the GLib main context on this thread; Racket
+;; 9.0 can leave atomic mode set after an iteration that dispatched callbacks,
+;; so it is dropped right after the capture (#13 S4).
 (define (capture! wv)
   (define shot (webview-capture! wv))
   (when (in-atomic-mode?) (end-atomic))
@@ -147,9 +146,6 @@
              [(>= (current-inexact-milliseconds) deadline) (return r)]
              [else (sleep 0.2) (loop)]))))
      (define tray-invoked (equal? (hash-ref (tray-view) 'view #f) "trace"))
-     (api-post url "/api/host/e2e_tray_invoke" (hasheq 'id "go:settings"))
-     (sleep 1.5)
-     (define settings-shot (save-shot! (capture! wv) "relaypilot-product-settings.png"))
 
      (define (step-ok? rep id)
        (define s (hash-ref (hash-ref rep 'steps (hasheq)) (string->symbol id) #f))
@@ -188,7 +184,6 @@
                                (member "go:trace" ids) (member "quit" ids)
                                active-item (eq? #t (hash-ref active-item 'checked #f)))))
                   (cons 'tray-route (and tray-invoked #t))
-                  (cons 'settings-capture (and settings-shot (> (file-size settings-shot) 0)))
                   (cons 'ui-import (step-ok? product "import"))
                   (cons 'ui-import-rejected (step-ok? product "import-rejected"))
                   (cons 'ui-saved-target (step-ok? product "saved-target"))

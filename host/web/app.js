@@ -803,10 +803,20 @@
     if (id.startsWith("go:")) { go(id.slice(3)); return; }
     if (id.startsWith("profile:")) { await run(() => activateProfile(id.slice(8))); }
   }
-  const events = new EventSource("/glaze/events");
-  events.addEventListener("relaypilot-menu", (e) => {
-    try { trayCommand(JSON.parse(e.data).id).catch(fail); } catch (_) { /* malformed frame */ }
-  });
+  // The event stream is opened once the first screen is up. The harness
+  // opens it itself (tray step): on Linux a window capture while the stream
+  // is open kills the carrier's stream writer (glaze: "attempt to
+  // deschedule the current thread in atomic mode"), and the verifier
+  // captures around the journeys, never during them.
+  let events = null;
+  function connectEvents() {
+    if (events) return events;
+    events = new EventSource("/glaze/events");
+    events.addEventListener("relaypilot-menu", (e) => {
+      try { trayCommand(JSON.parse(e.data).id).catch(fail); } catch (_) { /* malformed frame */ }
+    });
+    return events;
+  }
 
   // ---- boot -------------------------------------------------------------------
   async function boot() {
@@ -818,9 +828,10 @@
       await refresh();
       state.loadError = null;
       render();
+      if (!e2e) connectEvents();
       if (e2e && ctx.e2e === "true") {
         const harness = await import("./e2e.js");
-        harness.runJourney({ state, rpc, get, t, refresh, render, event, trace });
+        harness.runJourney({ state, rpc, get, t, refresh, render, event, trace, connectEvents });
       }
     } catch (e) {
       state.loadError = (e && e.message) || String(e);
