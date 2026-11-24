@@ -312,12 +312,13 @@ export async function runJourney(app) {
     await click(`[data-open-profile="${idA}"]`, dialog());
     assert(!dialog().open && state.view === "profiles" && state.selected === idA, "profile pick " + state.view);
     // The carrier pushes tray picks over the event stream; open it now.
-    // WebKit (macOS) only reports the stream as open with its first body
-    // bytes, i.e. the carrier's keepalive (glaze: 15 s), so the wait must
-    // outlast it.
+    // The stream's own "open" event is not what is under test (WebKit on
+    // macOS has been seen not to dispatch it for this response): the wait
+    // is a short courtesy, an error fails here, and a stream that stays
+    // silent is caught by the pick below, which has to come back over it.
+    const es = app.connectEvents();
     await new Promise((resolve, reject) => {
-      const es = app.connectEvents();
-      const timer = setTimeout(() => reject(new Error("event stream did not open")), 30000);
+      const timer = setTimeout(resolve, 5000);
       es.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
       es.addEventListener("error", () => { clearTimeout(timer); reject(new Error("event stream failed")); }, { once: true });
     });
@@ -330,8 +331,10 @@ export async function runJourney(app) {
     assert(checked && checked.checked === true && checked.label === nameA, "active item " + JSON.stringify(checked));
     assert(held.view === state.view, "view " + held.view);
     await post("/api/host/e2e_tray_invoke", { id: "go:connect" });
-    await waitUntil(() => state.view === "connect");
-    return `quick find → ${nameA} · tray ${ids.length} items (${held.backend}) · pick go:connect → connect`;
+    await waitUntil(() => state.view === "connect").catch(() => {
+      throw new Error("pick go:connect did not arrive over the event stream (readyState " + es.readyState + ")");
+    });
+    return `quick find → ${nameA} · tray ${ids.length} items (${held.backend}) · stream state ${es.readyState} · pick go:connect → connect`;
   });
 
   await refresh();
