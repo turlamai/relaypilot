@@ -23,7 +23,7 @@
 
 ## M2 — First usable desktop path
 
-- [x] Implement one native desktop host, preferably macOS or Windows — macOS SwiftUI anchor leg (issue #10, 2026-11-19); Windows/Linux legs follow
+- [x] Implement the first desktop host — one web UI on the glaze carrier for macOS, Windows and Linux, with a native tray on each (2026-11-24, #13). The earlier macOS SwiftUI leg (#10) was retired with the other rivet native hosts
 - [x] Connect/disconnect/status and a minimal connection/DecisionTrace inspector — engine-session lifecycle over RVT1 plus the real explain-route trace, expectation compare, and route patch
 - [ ] Add the platform tunnel/service boundary without moving VPN semantics into Rivet
 - [x] Import a real user-owned Surge profile subset and report unsupported fields — per-line import preview with placeholder-group mapping, wired through library-import RPCs
@@ -31,7 +31,7 @@
 
 ## M3 — Cross-platform proof
 
-- [ ] Implement the second desktop host on a different OS family
+- [x] Every declared desktop OS family served by the one carrier — the same package is built and self-checked (16-step product journey, native tray) on macOS, Windows and Linux x64/arm64 in CI (2026-11-24, #13)
 - [ ] Sync the same canonical profile through a user-owned folder
 - [ ] Prove the same decision fixtures on both platforms
 - [ ] Add DNS policy execution and IPv6 parity before claiming network consistency
@@ -44,4 +44,4 @@ iOS/iPadOS/tvOS NetworkExtension, Android VpnService, Linux daemon/TUN, subscrip
 
 保留架构 Alpha，暂不销售。profile→DecisionTrace→adapter dry-run→诊断的可执行纵切已于 2026-10-23 交付：agent-first CLI（`docs/CLI-SPEC.md` + 20 例 golden 契约）、受监督 Xray 进程 runtime（pin v26.3.27）、回环 SOCKS 实测、事件桥、RPC dry-run/会话扩展、notices/source-offer 工作流。未完成的跨平台、硬件或真实支付验证仍是显式门禁；本节不表示这些验证已通过。目标平台仍未支持，不把架构能力写成产品能力。
 
-执行场景与完成标准见[本仓审查 issue](https://github.com/turinglambdaai/relaypilot/issues/1)及家族[交付标准](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md)。后续一次认领一个切片（下一个：M2 第一条原生桌面宿主路径或实际网络接管评审切片），证据回填本文件与 issue。
+执行场景与完成标准见[本仓审查 issue](https://github.com/turlamai/relaypilot/issues/1)及家族[交付标准](https://github.com/turinglambdaai/turinglambdaai.github.io/blob/master/docs/PRODUCT-STANDARD.md)。后续一次认领一个切片，证据回填本文件与 issue。尚未认领的切片：M2 的平台隧道/服务边界（M1 的 libXray 固定版本随之）、M3 的配置同步与 DNS/IPv6，以及 `racket/core/ai/patch.rkt` 的调用方（`ConfigPatch` 目前只有类型与校验，CLI、backend 和载体都不调用它）。

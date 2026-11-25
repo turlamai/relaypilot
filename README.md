@@ -25,12 +25,13 @@ Free architecture experiment with no sale, subscription or commercial activation
 - Agent-first CLI (`validate` / `decide` / `compile` / `dry-run` / `import-surge` / `diagnose` / `version`): canonical JSON, exit codes that never lie, byte-level golden contract ([CLI-SPEC](docs/CLI-SPEC.md))
 - Supervised Xray process runtime: pinned binary discovery, version query, `run -test` config validation, session start/stop lifecycle, bounded structured event bridge, and a real loopback SOCKS request through a local test endpoint
 - Rivet RPC boundary for route explanation, engine compilation, dry runs, and engine session lifecycle
+- Desktop UI: one web UI on the glaze carrier (the system WebView) for connect/overview, profiles, trace and settings, with a carrier-owned tray. Packaged for macOS, Windows and Linux; CI runs the product journey against the package on each
 - Atomic local-folder storage boundary; provider-specific sync remains outside the profile model
-- Typed `DiagnosticBundle`, secret redaction, and preconditioned `ConfigPatch`
+- Typed `DiagnosticBundle`, secret redaction, and a validated `ConfigPatch` type (no AI caller is wired to it yet)
 - 58 passing Racket tests with the pinned engine (42 without it; engine tests skip with a printed reason), plus a 20-case golden CLI suite
 - CI: checksum-pinned Xray v26.3.27, release-identity and notice-pin checks, golden suite, and real engine session tests
 
-The repository does **not** yet contain a runnable VPN app, TUN integration, a bundled Xray/libXray binary, native screens, background services, subscriptions, production DNS, or commercial infrastructure. What ships next is tracked in [ROADMAP.md](ROADMAP.md); the control-plane design in [ARCHITECTURE.md](ARCHITECTURE.md).
+The repository does **not** yet contain a runnable VPN app, TUN integration, a bundled Xray/libXray binary, background services, subscriptions, production DNS, or commercial infrastructure. What ships next is tracked in [ROADMAP.md](ROADMAP.md); the control-plane design in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## First vertical slice
 
@@ -52,14 +53,14 @@ The same RelayPilot evaluator that explains a route is the source of the adapter
 
 ## Platform status
 
-| Platform | Native UI target | RelayPilot status |
+| Platform | UI target | RelayPilot status |
 |---|---|---|
-| macOS | SwiftUI/AppKit via Rivet | Host not started; control-plane boundary ready |
-| Windows | WinUI 3 via Rivet | Host not started; control-plane boundary ready |
-| Linux | GTK4 via Rivet | Host not started; Rivet path remains less mature |
-| iOS / iPadOS | SwiftUI + NetworkExtension | Architecture only; no claim of Rivet host support |
+| macOS | glaze carrier (system WebView) + native tray | Packaged (`dmg`, `zip`); product journey and tray self-checked in CI. Not signed, not published |
+| Windows | glaze carrier (WebView2) + native tray | Packaged (`msi`, `zip`), not code-signed; product journey and tray self-checked in CI. Not published |
+| Linux | glaze carrier (WebKitGTK) + native tray | Packaged (`deb`, `rpm`, `AppImage`, `tar.gz`); self-checked in CI. The tray needs libayatana-appindicator3 (or libappindicator3), else it is absent |
+| iOS / iPadOS | SwiftUI + NetworkExtension | Architecture only; not served by the glaze carrier, no native host |
 | tvOS | SwiftUI + NetworkExtension | Architecture only; libXray cgo feasibility, not a product build |
-| Android | Jetpack Compose + VpnService | Architecture only; no claim of Rivet host support |
+| Android | Jetpack Compose + VpnService | Architecture only; no native host |
 
 See [platform maturity](docs/platform-maturity.md) for the exact boundary.
 
@@ -91,7 +92,7 @@ scripts/relaypilot-cli.sh compile examples/relay-profile.json --out /tmp/xray.js
 ```text
 relaypilot/
 ├── rivet.rktd                 # Rivet application contract
-├── racket/backend.rkt         # typed native-host RPC boundary
+├── racket/backend.rkt         # typed RPC backend (served inside the carrier via rivet/bridge)
 ├── racket/cli.rkt             # agent-facing CLI (docs/CLI-SPEC.md)
 ├── racket/core/
 │   ├── profile/               # canonical Relay Profile

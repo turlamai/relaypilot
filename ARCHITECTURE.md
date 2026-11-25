@@ -13,9 +13,10 @@
 ## Layers
 
 ```text
-First-party native UI
-SwiftUI · WinUI 3 · GTK4 · Compose
-                 │ typed RVT1 RPC where Rivet is available
+First-party UI
+Desktop: one web UI on the glaze carrier (system WebView, carrier-owned tray)
+Mobile, later: SwiftUI · Compose
+                 │ typed RPC routes over the rivet/bridge codec (in-process RVT1)
                  ▼
 RelayPilot control plane (Racket)
 Profile · Rules · Policy · DNS intent · Connections · DecisionTrace
@@ -56,9 +57,9 @@ The next runtime boundary should expose:
 
 ## Rivet boundary
 
-Rivet remains the application foundation for platforms where it is mature: embedding Racket, typed RVT1 transport, generated native clients, resources, packaging, and general desktop services. VPN lifecycle, TUN semantics, engine management, connection models, and profile semantics live in RelayPilot until a capability has demonstrated general value outside this product.
+Rivet remains the foundation for typed RVT1 transport (`rivet/bridge` carries the RPC surface inside the carrier process) and for products whose main UI must be an OS-level window citizen. VPN lifecycle, TUN semantics, engine management, connection models, and profile semantics live in RelayPilot until a capability has demonstrated general value outside this product.
 
-No cross-platform UI DSL is introduced. Each host is a first-party native UI.
+No cross-platform UI DSL is introduced. The desktop UI is one web UI on the glaze carrier (owner decision 2026-11-23, #13); the rivet native hosts were retired with that decision, and a mobile host, when it lands, is a first-party native UI.
 
 ## Storage and sync
 
