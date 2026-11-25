@@ -88,6 +88,10 @@
       "path": "/api/host/context"
     },
     {
+      "method": "GET",
+      "path": "/api/host/update_check"
+    },
+    {
       "method": "POST",
       "path": "/api/host/e2e"
     },
@@ -374,6 +378,15 @@
         "result": {
           "kind": "scalar",
           "name": "Bool"
+        }
+      },
+      {
+        "errors": [],
+        "name": "hostUpdate_check",
+        "parameters": [],
+        "result": {
+          "kind": "scalar",
+          "name": "Value"
         }
       },
       {

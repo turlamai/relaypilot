@@ -63,6 +63,21 @@ canonical Xray JSON + SHA-256
 
 精确边界见 [平台成熟度](docs/platform-maturity.md)。
 
+## 安装
+
+尚未发布任何 release。发布之后，从
+[GitHub Releases](https://github.com/turlamai/relaypilot/releases/latest)
+获取对应平台的安装包（macOS `dmg`/`zip`，Windows `msi`/`zip`，Linux
+`deb`/`rpm`/`AppImage`/`tar.gz`），运行前先对照发布页的 `SHA256SUMS`
+校验：
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS   # 安装包放在同一目录
+```
+
+应用自身会校验 release 资产里的 Ed25519 签名 `update-manifest.json`；
+校验失败的降级结果是「无更新」，绝不会退到更弱的信任路径。
+
 ## 构建与测试
 
 需要 Racket CS 9.x 和 [Rivet](https://github.com/turlamai/rivet)：

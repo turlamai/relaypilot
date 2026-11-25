@@ -1,0 +1,93 @@
+# Flatpak bundle manifest for the release payload (family distribution
+# contract: deb+rpm+AppImage+Flatpak+tar.gz for products that ship Linux).
+#
+# CI renders the __VERSION__ / __ARCH__ / __SHA256__ placeholders from the
+# linux tar.gz it just built and writes the generated manifest to the repo
+# root (see .github/workflows/release.yml, the Flatpak step):
+#
+#   sed -e "s/__VERSION__/.../" -e "s/__ARCH__/.../" -e "s/__SHA256__/.../" \
+#     flatpak/site.jrtx.relaypilot.yml > site.jrtx.relaypilot.gen.yml
+#   flatpak-builder --user --force-clean --repo=repo build-dir site.jrtx.relaypilot.gen.yml
+#   flatpak build-bundle repo relaypilot-<v>-linux-<arch>.flatpak site.jrtx.relaypilot
+#
+# The payload is self-contained (embedded Racket CS runtime under lib/,
+# the built frontend under public/). Dependency closure vs the GNOME
+# Platform runtime follows the termpilot measurement (family pattern): the
+# launcher and the racketcs runtime declare exactly glibc + libz.so.1 —
+# all in the runtime — so there are NO extra modules. The launcher loads
+# dynamically: glaze's webview dlopens gtk-3 and webkit2gtk-4.1 (the GNOME
+# runtime hosts Epiphany, so both ship there), and the updater's crypto
+# package FFI-loads libssl.so.3 / libcrypto.so.3 — OpenSSL 3 is part of
+# the GNOME runtime since 48 (gnome-build-meta#1134). The app's own
+# outbound traffic (Xray endpoints, the update check) needs the network
+# permission below.
+#
+# The icon source (assets/icon-512.png) is owner-provided artwork: the
+# release Flatpak step stays skipped until that file exists, and the
+# desktop file below references the installed icon name.
+app-id: site.jrtx.relaypilot
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: relaypilot
+# The release contract bundles from branch `stable` (build-bundle arg);
+# builder otherwise commits to master.
+branch: stable
+separate-locales: false
+finish-args:
+  # glaze's prefer_xwayland_backend() picks X11 exactly when DISPLAY is
+  # set and WAYLAND_DISPLAY is not; granting only the X11 socket keeps
+  # that decision deterministic.
+  - --socket=x11
+  - --device=dri
+  - --share=ipc
+  # The engine talks to its configured remote endpoints and the update
+  # check leaves the sandbox too.
+  - --share=network
+modules:
+  - name: relaypilot
+    buildsystem: simple
+    build-options:
+      # The payload's launcher (bin/relaypilot) carries the whole program
+      # in a non-alloc ELF section (.rackprog; racketcs-9.3 embeds its
+      # boot the same way). flatpak-builder's debuginfo extraction (on by
+      # default) strips those files, which drops non-alloc sections: the
+      # launcher survives as a ~15KB stub and dies at startup. The payload
+      # ships prebuilt — keep it byte-exact (termpilot flatpak contract).
+      no-debuginfo: true
+    sources:
+      - type: archive
+        # The release tarball is flat (bin/, lib/ at the root, no leading
+        # top-level directory); flatpak-builder's default
+        # strip-components=1 strips the FIRST path component off every
+        # entry. Keep the layout exactly as packaged.
+        strip-components: 0
+        path: relaypilot-__VERSION__-linux-__ARCH__.tar.gz
+        sha256: __SHA256__
+      - type: file
+        path: assets/icon-512.png
+      - type: file
+        path: flatpak/site.jrtx.relaypilot.desktop
+    build-commands:
+      # flatpak-builder strips the archive's leading directory: the payload
+      # (bin/, lib/) lands flat in the build dir.
+      - mkdir -p /app/relaypilot
+      - cp -a bin lib /app/relaypilot/
+      # The bundle's `command` resolves on the sandbox PATH (/app/bin); the
+      # payload lives outside it. A wrapper execs the real binary, so
+      # /proc/self/exe still resolves to it (runtime layout discovery
+      # keeps working). /app is mounted read-only in the sandbox; the
+      # carrier's data-dir resolution (host/main.rkt) lands under
+      # XDG_DATA_HOME / $HOME/.local/share, which is the sandbox's
+      # per-app writable home (~/.var/app/site.jrtx.relaypilot/).
+      - mkdir -p /app/bin
+      - |
+        cat > /app/bin/relaypilot <<'EOF'
+        #!/bin/sh
+        exec /app/relaypilot/bin/relaypilot
+        EOF
+        chmod +x /app/bin/relaypilot
+      - install -Dm644 icon-512.png
+                    /app/share/icons/hicolor/512x512/apps/site.jrtx.relaypilot.png
+      - install -Dm644 site.jrtx.relaypilot.desktop
+                    /app/share/applications/site.jrtx.relaypilot.desktop

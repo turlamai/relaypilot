@@ -44,6 +44,15 @@ jobs:
         run: |
           raco pkg install --auto --no-docs "https://github.com/turlamai/rivet.git#${GLAZE_RIVET_PIN}"
           raco pkg install --auto --no-docs "https://github.com/turlamai/glaze.git#${GLAZE_PIN}"
+      # crypto is a catalog package (stable upstream, safe to track latest);
+      # the updater's libcrypto FFI needs it and ci.yml's Racket job does
+      # not install glaze at all, so the updater tests live here.
+      - name: Install crypto (updater FFI)
+        shell: bash
+        run: raco pkg install --auto --no-docs crypto
+      - name: Updater tests (signed-manifest round trip + selection)
+        shell: bash
+        run: raco test host/tests/
       - name: Glaze schema baseline must be committed current
         shell: bash
         run: |

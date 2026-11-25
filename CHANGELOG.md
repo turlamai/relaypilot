@@ -8,6 +8,20 @@ RelayPilot is an architecture alpha. Versions identify the source tree;
 
 ## [Unreleased]
 
+### Added
+
+- Release infrastructure: the root `VERSION` file joins the release-identity
+  gate (`scripts/check-release-version.sh`), `release.yml` fail-closes on the
+  update-signing key for tag releases, the publish job signs
+  `update-manifest.json` (family feed format, `scripts/make-update-manifest.sh`)
+  and a Flatpak bundle joins the Linux set once the product icon lands.
+- Signed update check: `racket/update.rkt` verifies the Ed25519-signed release
+  manifest (glaze/update + crypto libcrypto FFI); the carrier exposes
+  `api/host/update_check` (notify-and-open — nothing downloads or installs).
+  The banner UI follows with the prototype-first UI slice.
+- `scripts/update-keys.sh` generates the Ed25519 update-signing keypair.
+- README install section (release artifacts + checksum verification).
+
 ## [0.1.0] - 2026-11-24
 
 Architecture alpha, and the first packaged build. The version is kept
