@@ -64,6 +64,22 @@ The same RelayPilot evaluator that explains a route is the source of the adapter
 
 See [platform maturity](docs/platform-maturity.md) for the exact boundary.
 
+## Install
+
+No release is published yet. Once releases exist, install the packaged
+artifact for your platform from
+[GitHub Releases](https://github.com/turlamai/relaypilot/releases/latest)
+(`dmg`/`zip` on macOS, `msi`/`zip` on Windows, `deb`/`rpm`/`AppImage`/`tar.gz`
+on Linux) and verify it against the published `SHA256SUMS` before running it:
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS   # with the artifact in the same directory
+```
+
+The app verifies the Ed25519-signed `update-manifest.json` release asset
+itself; a failed verification degrades to "no update", never to a
+less-verified one.
+
 ## Build and test
 
 Requires Racket CS 9.x and [Rivet](https://github.com/turlamai/rivet):

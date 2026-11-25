@@ -56,6 +56,7 @@
          json
          (prefix-in engine: "../racket/backend.rkt")
          (prefix-in core: "../racket/core/version.rkt")
+         (prefix-in update: "../racket/update.rkt")
          rivet/bridge)
 
 ;; The route list schema tooling reads (glaze.rktd points here).
@@ -189,6 +190,16 @@
    (hasheq 'libraryRoot (path->string (library-root))
            'version app-version
            'e2e (if (e2e-enabled?) "true" "false"))]
+
+  ;; Signed update check (racket/update.rkt): the carrier verifies the
+  ;; Ed25519-signed release-asset manifest and answers {version, url,
+  ;; notes} or #f. Notify-and-open only — nothing is downloaded or
+  ;; installed. A failed check degrades to #f (no banner), never to a
+  ;; less-verified one. The banner UI lands with the prototype-first UI
+  ;; slice; this route is the infrastructure seam.
+  [(GET "api/host/update_check" #:permission 'host #:returns GValue)
+   (hostUpdateCheck)
+   (update:check-update-signed app-version)]
 
 
   ;; ---- acceptance harness gate (#13 S0/S1) ------------------------------

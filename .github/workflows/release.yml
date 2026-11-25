@@ -89,6 +89,15 @@ jobs:
               exit 1
             fi
           done
+      - name: Tag releases need the update-signing key
+        if: env.IS_TAG_RELEASE == 'true'
+        env:
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
+        run: |
+          if [ -z "${UPDATE_ED25519_PRIVATE_KEY:-}" ]; then
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY is not set on this repository. A tag release publishes an Ed25519-signed update-manifest.json; refusing an unsigned feed before any build. Generate the key with scripts/update-keys.sh and set the secret (PEM) before pushing a v* tag."
+            exit 1
+          fi
       - name: Read glaze + rivet pins from host-ci.yml
         id: pin
         run: |
@@ -375,6 +384,49 @@ jobs:
           mv glaze-sbom.cdx.json "relaypilot-$VERSION-linux-$ARCH.sbom.cdx.json"
           mv glaze-notices.txt "relaypilot-$VERSION-linux-$ARCH-THIRD_PARTY_NOTICES.txt"
           ls -la relaypilot-*
+      # Flatpak bundle from the dist tarball (the Linux distribution
+      # contract's last format). The manifest template declares the exact
+      # dependency closure against the GNOME 50 runtime (see the family
+      # readelf evidence in flatpak/site.jrtx.relaypilot.yml — no extra
+      # modules). Guarded on the product icon: the manifest's icon source
+      # is owner-provided artwork, and the step stays skipped until
+      # assets/icon-512.png exists (tracked on the release-readiness issue).
+      - name: Flatpak bundle
+        run: |
+          set -euo pipefail
+          if [ ! -f assets/icon-512.png ]; then
+            echo "::warning::assets/icon-512.png missing; skipping the Flatpak bundle (product icon pending)"
+            exit 0
+          fi
+          sudo apt-get install --yes flatpak flatpak-builder
+          # User-level everything: runner accounts install runtimes and
+          # build without root. GNOME 50 is the oldest supported platform
+          # runtime (48 went EOL 2026-03-24); its glibc covers the
+          # ubuntu-built payload. The bundle inherits the runner arch.
+          case "${{ matrix.arch }}" in
+            x64)   FPARCH="x86_64" ;;
+            arm64) FPARCH="aarch64" ;;
+          esac
+          flatpak --user remote-add --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y --noninteractive flathub \
+            "org.gnome.Platform/${FPARCH}/50" "org.gnome.Sdk/${FPARCH}/50"
+          VERSION="${{ needs.validate.outputs.version }}"
+          tarball="relaypilot-$VERSION-linux-${{ matrix.arch }}.tar.gz"
+          test -s "dist/$tarball"
+          cp "dist/$tarball" "$tarball"
+          SHA="$(sha256sum "$tarball" | cut -d' ' -f1)"
+          sed -e "s/__VERSION__/${VERSION}/" -e "s/__ARCH__/${{ matrix.arch }}/" \
+              -e "s/__SHA256__/${SHA}/" \
+              flatpak/site.jrtx.relaypilot.yml > site.jrtx.relaypilot.gen.yml
+          # --disable-rofiles-fuse: runners have no /dev/fuse.
+          flatpak-builder --user --force-clean --disable-rofiles-fuse \
+            --repo=flatpak-repo flatpak-build site.jrtx.relaypilot.gen.yml
+          flatpak build-bundle flatpak-repo \
+            "relaypilot-$VERSION-linux-${{ matrix.arch }}.flatpak" site.jrtx.relaypilot stable
+          rm -rf flatpak-build flatpak-repo site.jrtx.relaypilot.gen.yml "$tarball"
+          test -f "relaypilot-$VERSION-linux-${{ matrix.arch }}.flatpak"
+          mv "relaypilot-$VERSION-linux-${{ matrix.arch }}.flatpak" dist/
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
@@ -387,7 +439,7 @@ jobs:
 
   publish:
     name: Publish release (tag only)
-    needs: [macos, windows, linux]
+    needs: [validate, macos, windows, linux]
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
@@ -399,6 +451,16 @@ jobs:
           path: dist
           pattern: '*'
           merge-multiple: true
+      # Signing the update feed needs the same racket the app ships with
+      # (glaze/update schema structs + the crypto package's libcrypto FFI).
+      - uses: Bogdanp/setup-racket@v1.15
+        with:
+          version: stable
+          distribution: full
+      - name: Install glaze (release pin) and crypto
+        run: |
+          raco pkg install --auto --no-docs --skip-installed \
+            "https://github.com/turlamai/glaze.git#${{ needs.validate.outputs.glaze-pin }}" crypto
       - name: Stage every asset and write SHA256SUMS
         run: |
           set -euo pipefail
@@ -417,10 +479,48 @@ jobs:
             test -s "dist/$name" || { echo "::error::Missing or empty $name"; exit 1; }
             mv "dist/$name" "public/$name"
           done
+          # The Flatpak bundle is best-effort until the product icon lands
+          # (the linux build step skips it without assets/icon-512.png);
+          # stage it whenever it was built.
+          for flatpak in dist/relaypilot-$VERSION-linux-*.flatpak; do
+            [ -e "$flatpak" ] || continue
+            mv "$flatpak" "public/$(basename "$flatpak")"
+          done
+          # Core payload count: the 18 versioned artifacts above; each
+          # optional Flatpak adds one more before the manifest is signed.
+          expected=18
+          found="$(ls public | grep -c '^relaypilot-')"
+          test "$found" -ge "$expected" || { echo "::error::public/ holds $found payloads, expected at least $expected"; exit 1; }
           cd public
           shasum -a 256 relaypilot-* | LC_ALL=C sort -k2 > SHA256SUMS
           shasum -a 256 --check SHA256SUMS
-          test "$(grep -c '^' SHA256SUMS)" -eq 18
+      # The signed update feed is a release asset (the app reads
+      # releases/latest/download/update-manifest.json) whose signature the
+      # embedded public key verifies. Fail-closed: no secret, no release
+      # (validate already refuses a tag without the key, and the script
+      # refuses a key that does not match the embedded public key).
+      - name: Sign the update feed (update-manifest.json)
+        env:
+          UPDATE_ED25519_PRIVATE_KEY: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          [[ -n "${UPDATE_ED25519_PRIVATE_KEY:-}" ]] || {
+            echo "::error::UPDATE_ED25519_PRIVATE_KEY missing; refusing unsigned release"
+            exit 1
+          }
+          umask 077
+          KEY_PEM="$RUNNER_TEMP/update-signing-key.pem"
+          trap 'rm -f "$KEY_PEM"' EXIT
+          printf '%s\n' "$UPDATE_ED25519_PRIVATE_KEY" > "$KEY_PEM"
+          scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_PEM"
+          test -s dist/update-manifest.json || {
+            echo "::error::Signed update manifest missing; refusing to publish"
+            exit 1
+          }
+          mv dist/update-manifest.json public/update-manifest.json
+          # The checksum inventory covers the signed feed too.
+          (cd public && shasum -a 256 relaypilot-* update-manifest.json \
+             | LC_ALL=C sort -k2 > SHA256SUMS && shasum -a 256 --check SHA256SUMS)
       - name: Write release notes from the CHANGELOG section
         run: |
           set -euo pipefail
@@ -440,7 +540,8 @@ jobs:
           - A live engine session with the real Xray binary is exercised in CI on
             Linux x64 only.
           - This build has no TUN, VPN or system-service capability.
-          - There is no update mechanism; installs do not check for updates.
+          - The app verifies the Ed25519-signed update feed and offers to open
+            the release page; it never downloads or installs anything on its own.
           - The Windows installer is not Authenticode-signed.
           EOF
       - name: Publish

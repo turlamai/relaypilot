@@ -4,7 +4,7 @@ RelayPilot 是统一网络配置与可解释路由的架构 Alpha。目前提供
 
 [![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
 
-[English](README.md) · **中文** · 🌐 [relaypilot.jrtx.site](https://relaypilot.jrtx.site/)
+[English](README.md) · **中文**
 
 RelayPilot 不是“Xray GUI”。Profile、规则、策略组选择、DNS 意图、连接记录、`DecisionTrace`、诊断、同步边界和 AI 的 typed patch 都属于 RelayPilot。Xray/libXray 只是第一个可替换的协议引擎。
 
@@ -62,6 +62,21 @@ canonical Xray JSON + SHA-256
 | Android | Jetpack Compose + VpnService | 仅架构；不宣称 Rivet 已支持 |
 
 精确边界见 [平台成熟度](docs/platform-maturity.md)。
+
+## 安装
+
+尚未发布任何 release。发布之后，从
+[GitHub Releases](https://github.com/turlamai/relaypilot/releases/latest)
+获取对应平台的安装包（macOS `dmg`/`zip`，Windows `msi`/`zip`，Linux
+`deb`/`rpm`/`AppImage`/`tar.gz`），运行前先对照发布页的 `SHA256SUMS`
+校验：
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS   # 安装包放在同一目录
+```
+
+应用自身会校验 release 资产里的 Ed25519 签名 `update-manifest.json`；
+校验失败的降级结果是「无更新」，绝不会退到更弱的信任路径。
 
 ## 构建与测试
 

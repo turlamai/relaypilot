@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RelayPilot
+Comment=Local-first cross-platform network toolbox for macOS, Windows and Linux
+Exec=relaypilot
+Icon=site.jrtx.relaypilot
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=relaypilot
