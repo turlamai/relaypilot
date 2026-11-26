@@ -1,8 +1,8 @@
 # RelayPilot
 
-RelayPilot 是统一网络配置与可解释路由的架构 Alpha。目前提供 Racket 源码 CLI 和受监督的回环引擎纵切；规划中的原生宿主尚不是已发布客户端。
+RelayPilot 是统一网络配置与可解释路由的架构 Alpha。目前提供 Racket 源码 CLI、受监督的回环引擎纵切及 Glaze 桌面宿主；尚未发布桌面或移动端正式版本。
 
-[![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
+[![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Glaze%20%2B%20Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
 
 [English](README.md) · **中文**
 
@@ -30,7 +30,7 @@ RelayPilot 不是“Xray GUI”。Profile、规则、策略组选择、DNS 意�
 - 固定引擎就位时 58 项 Racket 测试通过（无引擎时 42 项通过，引擎测试打印原因后跳过），另有 20 例 golden CLI 套件
 - CI：SHA-256 固定的 Xray v26.3.27、发布身份与 notice pin 检查、golden 套件、真实引擎会话测试
 
-仓库目前**还不是可运行 VPN 客户端**：尚未集成 TUN、未打包 Xray/libXray、没有原生界面、后台服务、订阅、生产 DNS 或商业系统。下一步见[路线图](ROADMAP.md)，控制平面设计见[架构](ARCHITECTURE.md)。
+仓库目前**还不是可运行 VPN 客户端**：尚未集成 TUN、未打包 Xray/libXray、没有系统级 VPN 后台服务、订阅、生产 DNS 或商业系统。下一步见[路线图](ROADMAP.md)，控制平面设计见[架构](ARCHITECTURE.md)。
 
 ## 第一条纵向链路
 
@@ -54,9 +54,9 @@ canonical Xray JSON + SHA-256
 
 | 平台 | 原生 UI 目标 | 当前状态 |
 |---|---|---|
-| macOS | SwiftUI/AppKit + Rivet | host 尚未开始；控制平面边界已就绪 |
-| Windows | WinUI 3 + Rivet | host 尚未开始；控制平面边界已就绪 |
-| Linux | GTK4 + Rivet | host 尚未开始；Rivet 路线成熟度更低 |
+| macOS | Glaze 系统 WebView + 原生托盘 | CI 打包及产品流程验收；正式发布要求 Developer ID 签名和公证，尚未发布 |
+| Windows | Glaze WebView2 + 原生托盘 | CI 打包及产品流程验收；安装包未签名，尚未发布 |
+| Linux | Glaze WebKitGTK + 原生托盘 | CI 打包及产品流程验收；托盘依赖 libayatana-appindicator3 或 libappindicator3，尚未发布 |
 | iOS / iPadOS | SwiftUI + NetworkExtension | 仅架构；不宣称 Rivet 已支持 |
 | tvOS | SwiftUI + NetworkExtension | 仅架构；libXray cgo 可行性不等于产品已构建 |
 | Android | Jetpack Compose + VpnService | 仅架构；不宣称 Rivet 已支持 |
@@ -129,7 +129,7 @@ relaypilot/
 
 - local-first：当前不需要账号、License server、自建云或必须依赖的服务器。
 - 用户自有同步：Apple 平台优先 iCloud Drive；跨平台使用本地文件夹、WebDAV 等 provider。
-- 每个平台都是真原生 UI；Rivet 承载 typed application logic，不引入跨平台 UI DSL。
+- 桌面端采用 Glaze 系统 WebView 与原生平台能力；Rivet 承载 typed application logic。移动端仍处于架构规划阶段。
 - AI 只能解释或提出可校验 typed patch，不能直接修改运行配置。
 - 协议引擎是可替换基础设施，RelayPilot 语义必须留在本仓库。
 
