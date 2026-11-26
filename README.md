@@ -1,8 +1,8 @@
 # RelayPilot
 
-RelayPilot is an architecture alpha for canonical network profiles and explainable routing. It currently provides a Racket source CLI and a supervised loopback engine slice; planned native hosts are not released clients.
+RelayPilot is an architecture alpha for canonical network profiles and explainable routing. It provides a Racket source CLI, a supervised loopback engine slice and a Glaze desktop host; no public desktop or mobile release is available yet.
 
-[![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
+[![CI](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml/badge.svg)](https://github.com/turlamai/relaypilot/actions/workflows/ci.yml) ![built with](https://img.shields.io/badge/built%20with-Glaze%20%2B%20Rivet-9333ea) ![license](https://img.shields.io/badge/license-Proprietary-red) ![stage](https://img.shields.io/badge/stage-architecture%20alpha-C15F3C)
 
 **English** · [中文](README.zh-CN.md) · 🌐 [relaypilot.jrtx.site](https://relaypilot.jrtx.site/)
 
@@ -55,7 +55,7 @@ The same RelayPilot evaluator that explains a route is the source of the adapter
 
 | Platform | UI target | RelayPilot status |
 |---|---|---|
-| macOS | glaze carrier (system WebView) + native tray | Packaged (`dmg`, `zip`); product journey and tray self-checked in CI. Not signed, not published |
+| macOS | glaze carrier (system WebView) + native tray | Packaged (`dmg`, `zip`); product journey and tray self-checked in CI. Tag releases require Developer ID signing and notarization; not published |
 | Windows | glaze carrier (WebView2) + native tray | Packaged (`msi`, `zip`), not code-signed; product journey and tray self-checked in CI. Not published |
 | Linux | glaze carrier (WebKitGTK) + native tray | Packaged (`deb`, `rpm`, `AppImage`, `tar.gz`); self-checked in CI. The tray needs libayatana-appindicator3 (or libappindicator3), else it is absent |
 | iOS / iPadOS | SwiftUI + NetworkExtension | Architecture only; not served by the glaze carrier, no native host |
@@ -131,7 +131,7 @@ relaypilot/
 
 - Local-first. No required account, license server, RelayPilot cloud, or mandatory service.
 - User-owned sync: iCloud Drive first on Apple; local folders and WebDAV across platforms.
-- Native UI on every platform. Rivet carries typed application logic, not a cross-platform UI DSL.
+- Desktop UI uses Glaze with system WebViews and native platform capabilities; Rivet carries typed application logic. Mobile hosts remain architecture targets.
 - AI can explain or propose a typed, validated patch. It cannot directly mutate a live profile.
 - Protocol engines are replaceable infrastructure. RelayPilot-specific semantics stay here.
 
