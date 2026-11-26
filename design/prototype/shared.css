@@ -67,8 +67,8 @@
   --accent:#a6472e; --accent-hover:#873923; --accent-soft:#f7e8e1; --brand:#d97757;
   --ok:#237346; --ok-soft:#eaf4ed; --warn:#94540a; --warn-soft:#fff3df;
   --danger:#b3261e; --danger-soft:#fff0ee;
-  --mono:ui-monospace,"SF Mono","Cascadia Code",monospace;
-  --font:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","Noto Sans Mono CJK SC", "Noto Sans CJK SC", "Microsoft YaHei", monospace;
+  --font:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans CJK SC", sans-serif;
   --text:16px; --small:14px; --tiny:12px; --title:28px; --display:clamp(28px,3vw,40px);
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
   --r1:8px; --r2:12px; --r3:16px;
@@ -390,3 +390,9 @@ kbd { font:var(--tiny)/1.5 var(--mono); padding:var(--s1) var(--s2); border:1px 
 /* Keep mobile labels and disabled actions readable in both themes. */
 .mobile-surface .field label { font-size:var(--text); }
 :root[data-theme=dark] .mobile-surface .btn.primary:disabled { color:var(--mute); background:var(--raised); border-color:var(--line); }
+
+/* ---- temperament profile pass ---- */
+/* typography baseline (family standard 2026-11-26-temperament-profiles): CJK/Latin spacing and kinsoku come from the rendering layer,
+   never from typed spaces (§4, §10). Values stay in the token block above. */
+body { text-autospace: normal; line-break: strict; }
+::selection { background: var(--accent-soft); color: var(--ink); }
