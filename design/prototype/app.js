@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const surface=document.body.dataset.surface || 'desktop';
   const root = document.getElementById('root');
   const modal = document.getElementById('modal');
   const toast = document.getElementById('toast');
@@ -81,7 +82,7 @@
     const rule=index<0?null:profile.rules[index];
     const direct=rule?.policy==='DIRECT';
     const reject=rule?.policy==='REJECT';
-    return {rule,index,direct,reject,exit:!rule?'没有匹配规则':direct?'直接连接':reject?'拒绝连接':'proxy/lab-a',policy:rule?.policy||'无',source:rule?`${rule.type}${rule.value?', '+rule.value:''}, ${rule.policy}`:''};
+    return {rule,index,direct,reject,matchedKind:rule?.type||null,exit:!rule?'没有匹配规则':direct?'直接连接':reject?'拒绝连接':'proxy/lab-a',policy:rule?.policy||'无',source:rule?`${rule.type}${rule.value?', '+rule.value:''}, ${rule.policy}`:''};
   }
   function overview() {
     const p=active();
@@ -308,6 +309,7 @@
     }
   }
   document.addEventListener('click',e=>{
+    if(surface!=='desktop')return;
     const b=e.target.closest('button');if(!b||b.disabled)return;
     if(b.dataset.commandView){closeDialog();go(b.dataset.commandView);return;}
     if(b.dataset.view){go(b.dataset.view);return;}
@@ -317,17 +319,20 @@
     if(b.dataset.action)handle(b.dataset.action);
   });
   document.addEventListener('input',e=>{
+    if(surface!=='desktop')return;
     if(e.target.id==='target')state.input=e.target.value;
     if(e.target.id==='profile-search'){state.query=e.target.value;$('#profile-results',root).innerHTML=profileResults();}
     if(e.target.id==='command-search'){state.commandQuery=e.target.value;$('#command-results',modal).innerHTML=commandResults();}
   });
   document.addEventListener('change',e=>{
+    if(surface!=='desktop')return;
     if(e.target.id==='theme'){state.theme=e.target.value;setTheme();storePreferences();notify('外观偏好已更新。');}
     if(e.target.id==='import-ack'){const b=$('[data-action="confirm-import"]',modal);if(b)b.disabled=!e.target.checked;}
     if(e.target.id==='profile-filter'){state.filter=e.target.value;$('#profile-results',root).innerHTML=profileResults();}
     if(e.target.id==='expected-policy'){const value=e.target.value;if(value)state.expected[state.target]=value;else delete state.expected[state.target];render();$('#expected-policy',root)?.focus();}
   });
   document.addEventListener('keydown',e=>{
+    if(surface!=='desktop')return;
     if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!modal.open)commands();return;}
     if(modal.open&&$('#command-search',modal)){
       const buttons=Array.from(modal.querySelectorAll('.command-item'));
@@ -339,5 +344,127 @@
     if(e.key==='/'&&!editable&&!modal.open&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(state.view==='trace')$('#target',root)?.focus();else{if(state.view!=='profiles')go('profiles',false);$('#profile-search',root)?.focus();}return;}
     if(e.key==='Enter'&&e.target.id==='target'){e.preventDefault();if(!state.inspecting)inspect();}
   });
-  render();
+  function initMobile() {
+    const mobileNames={connect:'运行概览',trace:'路由检查',profiles:'配置库',settings:'设置'};
+    const mobileFiles={connect:'mobile-overview.html',trace:'mobile-trace.html',profiles:'mobile-profiles.html',settings:'mobile-settings.html'};
+    const m={desktop:'offline',proxy:'stopped',checking:false,input:'',result:null,records:[],detail:null,query:'',stack:[],scroll:{},error:'',request:0,readingProcess:false};
+    const scenario=new URLSearchParams(location.search).get('scenario') || 'offline';
+    if(['running','starting','stopping','proxy-failed','invalid','process-unreachable','stopped'].includes(scenario))m.desktop='online';
+    if(['running','starting','stopping'].includes(scenario))m.proxy=scenario;
+    if(scenario==='failed'){m.desktop='failed';m.error='无法连接桌面控制端。请确认桌面已开机、RelayPilot 正在运行，且两端位于可达网络。';}
+    if(scenario==='proxy-failed'){m.proxy='failed';m.error='桌面未能启动 Xray。请在桌面查看进程诊断，处理后重新尝试。';}
+    if(scenario==='process-unreachable'){m.proxy='unreachable';m.error='桌面控制端可达，但无法读取 Xray 进程状态。请在桌面检查进程和控制权限。';}
+    if(scenario==='invalid'){state.active='office';state.selected='office';active().status='invalid';active().errors=validateRules(active().rules);m.error='配置校验失败，代理尚未启动。';}
+    const online=()=>m.desktop==='online';
+    const working=()=>['starting','stopping'].includes(m.proxy)||m.desktop==='connecting';
+    const routeKey=()=>state.view+(m.detail?':'+m.detail:'');
+    function savePosition(){m.scroll[routeKey()]=window.scrollY;}
+    function navigate(view,detail=null,push=true){
+      savePosition();if(push)m.stack.push({view:state.view,detail:m.detail});
+      state.view=view;m.detail=detail;draw();window.scrollTo(0,m.scroll[routeKey()]||0);
+      $('h1',root)?.focus({preventScroll:true});
+    }
+    function back(){const previous=m.stack.pop();if(previous)navigate(previous.view,previous.detail,false);else if(m.detail)navigate('profiles',null,false);else if(state.view!=='connect')navigate('connect',null,false);else location.href='../index.html';}
+    const link=(view,label,desc)=>`<a href="${mobileFiles[view]}" class="m-row" data-m-view="${view}"><span class="od-field od-fill"><strong>${label}</strong><span class="m-meta">${desc}</span></span>${icon('arrow')}</a>`;
+    const stateLabel=()=>!online()?'状态未知':({running:'运行中',stopped:'已停止',starting:'启动中',stopping:'停止中',failed:'连接失败',unreachable:'进程不可达'}[m.proxy]);
+    function frame(content){
+      return `<div class="m-app"><header class="m-header"><button type="button" class="m-back" data-m-action="back">${icon('back')}<span>${m.detail?'配置库':state.view==='connect'?'原型目录':'返回'}</span></button><span class="m-meta">RelayPilot · 桌面伴随端</span></header><main class="m-main"><h1 tabindex="-1">${m.detail?'配置详情':mobileNames[state.view]}</h1><p class="m-caption">${m.detail?'查看桌面配置，不在手机修改。':state.view==='connect'?'控制桌面的代理，连接始终发生在桌面。':state.view==='trace'?'按桌面配置检查目标的路由。':state.view==='profiles'?'配置存放在桌面，手机以只读查看为主。':'外观与桌面连接信息。'}</p><div class="m-prototype">本地交互模拟 · 未连接真实桌面</div>${content}</main></div>`;
+    }
+    function offlineContent(){
+      const failed=m.desktop==='failed';
+      return `<section class="m-empty" aria-label="桌面连接状态"><span class="m-state-icon">${icon(failed?'warning':'grid')}</span><h2>${m.desktop==='connecting'?'正在连接桌面':failed?'连接失败':'桌面不在线'}</h2><p>${m.desktop==='connecting'?'正在尝试读取桌面状态，请稍候。':failed?esc(m.error):'尚未取得桌面状态。请确认桌面已开机，并打开 RelayPilot。'}</p><button type="button" class="btn primary" data-m-action="reconnect" ${m.desktop==='connecting'?'disabled':''}>${m.desktop==='connecting'?'正在连接…':failed?'重新连接':'连接桌面'}</button><p class="m-meta">离线时无法启停代理或检查新的路由。</p></section>`;
+    }
+    function mobileOverview(){
+      if(!online())return offlineContent()+`<nav class="m-section" aria-label="伴随端功能">${link('trace','路由检查','输入与最近记录保留')}${link('profiles','配置库','查看本地示例，不代表实时快照')}${link('settings','设置','主题与连接说明')}</nav>`;
+      const invalid=active().status==='invalid';
+      const danger=['failed','unreachable'].includes(m.proxy);
+      const fallback=active().rules.find(r=>r.type==='FINAL');
+      const exit=m.proxy==='running'?(fallback?.policy==='DIRECT'?'DIRECT':fallback?.policy==='REJECT'?'REJECT':'proxy/lab-a'):'未启用';
+      return `<section class="m-panel" aria-label="桌面代理状态"><div class="od-row"><span class="m-state-icon ${m.proxy==='running'?'good':danger?'bad':''}">${icon(m.proxy==='running'?'check':danger?'warning':'power')}</span><div class="od-field od-fill"><span class="m-meta">家庭实验室桌面 · 示例</span><h2 class="m-status" role="status">${stateLabel()}</h2></div></div><p class="m-caption">${working()?(m.proxy==='starting'?'正在校验桌面配置并启动 Xray。':'正在等待桌面停止 Xray。'):danger?esc(m.error):m.proxy==='running'?'Xray 在桌面运行，手机不承载代理进程。':'Xray 已停止，配置仍保留在桌面。'}</p>${danger?`<button type="button" class="btn primary m-full" data-m-action="${m.proxy==='unreachable'?'refresh-process':'control'}" ${m.readingProcess?'disabled':''}>${m.readingProcess?'正在读取…':m.proxy==='unreachable'?'重新读取进程状态':'重试启动'}</button>`:`<button type="button" class="btn ${m.proxy==='running'?'danger':'primary'} m-full" data-m-action="control" ${working()?'disabled':''}>${icon('power')}${working()?m.proxy==='starting'?'正在启动…':'正在停止…':m.proxy==='running'?'停止桌面代理':'启动桌面代理'}</button>`}<dl class="m-facts"><div><dt>当前出口</dt><dd class="mono">${exit}</dd></div><div><dt>出口延迟</dt><dd>未测量</dd></div><div><dt>当前配置</dt><dd class="mono">${esc(active().name)}</dd></div></dl></section>${invalid?`<section class="m-feedback error" role="alert">${icon('warning')}<div class="od-field od-fill"><strong>校验失败，未启动</strong><span>缺少 FINAL 兜底规则。请在桌面修复后再重试。</span><button type="button" class="m-text-button" data-m-profile="office">查看错误详情 ${icon('arrow')}</button></div></section>`:''}<nav class="m-section" aria-label="伴随端功能">${link('trace','路由检查','查看命中规则与最终策略')}${link('profiles','配置库',state.profiles.length+' 份示例配置 · 只读')}${link('settings','设置','主题与桌面连接')}</nav>`;
+    }
+    function mobileTrace(){
+      const unavailable=!online()||m.proxy==='unreachable';
+      const r=m.result;
+      return `${unavailable?`<div class="m-feedback warn">${icon('warning')}<div class="od-field"><strong>${online()?'Xray 进程不可达':'桌面不在线'}</strong><span>无法读取新的路由结果，输入和已有记录会保留。</span><button type="button" class="m-text-button" data-m-view="connect">返回概览处理 ${icon('arrow')}</button></div></div>`:''}<div class="m-section field"><label for="m-target">目标域名</label><input type="text" class="mono" id="m-target" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="url" value="${esc(m.input)}" placeholder="例如 nas.lab.internal" aria-describedby="m-target-error"><p class="field-error" id="m-target-error" role="alert" hidden></p><button type="button" class="btn primary" data-m-action="inspect" ${unavailable||m.checking?'disabled':''}>${icon('search')}${m.checking?'正在检查…':'检查路由'}</button></div>${m.checking?'<div class="m-feedback" role="status">正在按顺序匹配规则…</div>':r?`<section class="m-section m-panel"><div class="section-head"><h2>检查结果</h2>${badge(r.matchedKind==='FINAL'?'兜底匹配':r.matchedKind?'规则命中':'未匹配',r.matchedKind?'ok':'warn')}</div><p class="mono">${esc(r.target)}</p><dl class="m-facts"><div><dt>matchedKind</dt><dd class="mono">${esc(r.matchedKind||'无')}</dd></div><div><dt>命中规则</dt><dd class="mono">${esc(r.source||'无匹配规则')}</dd></div><div><dt>最终策略</dt><dd class="mono">${esc(r.policy)}</dd></div><div><dt>出口</dt><dd class="mono">${esc(r.exit)}</dd></div></dl><p class="m-meta">${r.policy==='DIRECT'?'DIRECT 命中后停止，不再选择代理出口。':r.policy==='REJECT'?'REJECT 命中后终止，不再选择出口。':'按规则顺序首条命中即停止，策略组解析到静态示例出口。'}</p><details><summary>规则来源与记录</summary><code class="source-code">${esc(r.profile)} · rules[${r.index}]\n${esc(r.traceId)}\n${esc(r.source)}</code><p class="m-meta">本地规则模拟，无真实引擎摘要。</p></details>${unavailable?'<p class="m-meta">上次检查结果，当前桌面状态不可用。</p>':''}</section>`:'<p class="m-meta m-section">输入一个域名，查看配置中第一条命中的规则。</p>'}<section class="m-section"><h2>最近检查</h2>${m.records.length?m.records.map((record,i)=>`<button type="button" class="m-row" data-m-record="${i}"><span class="od-field od-fill"><strong class="mono">${esc(record.target)}</strong><span class="m-meta">${esc(record.policy)} · ${esc(record.time)}</span></span>${icon('arrow')}</button>`).join(''):'<div class="m-empty-compact"><p>还没有检查记录</p><p class="m-meta">成功完成检查后，结果会保留在这里。</p></div>'}</section>`;
+    }
+    function mobileProfiles(){
+      const p=m.detail?state.profiles.find(p=>p.id===m.detail):null;
+      const note=!online()?'<div class="m-feedback warn">桌面不在线。以下为本地示例，不能作为实时桌面状态。</div>':'';
+      if(p){
+        const errors=p.status==='invalid'?(p.errors||validateRules(p.rules)):[];
+        return `${note}<section class="m-section"><div class="section-head"><h2 class="mono">${esc(p.name)}</h2>${badge(p.status==='valid'?'校验通过':p.status==='pending'?'待校验':'校验失败',p.status==='valid'?'ok':p.status==='pending'?'warn':'error')}</div><p class="m-caption">${esc(p.description)}${p.id===state.active?' · 桌面当前配置':''}</p>${errors.length?`<div class="m-feedback error" role="status"><div class="od-field"><strong>请在桌面处理</strong><ul class="report-list">${errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div></div>`:''}<h3 class="m-section">路由规则</h3>${p.rules.length?p.rules.map((r,i)=>`<div class="m-rule"><span class="m-meta mono">${i+1}</span><div class="od-field od-fill"><code>${esc(r.type)}${r.value?', '+esc(r.value):''}</code><span class="mono">${esc(r.policy)}</span></div></div>`).join(''):'<p class="m-caption">完整配置尚未转换，请在桌面查看逐行导入报告。</p>'}<p class="m-meta m-section">只读查看。修改、导入、切换和删除配置请在桌面完成。</p></section>`;
+      }
+      return `${note}<div class="field m-section"><label for="m-profile-search">搜索配置</label><input type="search" id="m-profile-search" value="${esc(m.query)}" placeholder="搜索名称或描述"></div><div id="m-profile-list">${profileList()}</div><p class="m-meta m-section">导入不会自动切换当前配置。校验失败需在桌面修复，手机不修改配置。</p>`;
+    }
+    function profileList(){
+      const list=state.profiles.filter(p=>matchText(m.query,p.name+' '+p.description));
+      return list.length?list.map(p=>`<button type="button" class="m-row" data-m-profile="${p.id}"><span class="od-field od-fill"><strong class="mono">${esc(p.name)}</strong><span class="m-meta">${esc(p.description)}${p.id===state.active?' · 当前配置':''}</span><span>${badge(p.status==='valid'?'校验通过':p.status==='pending'?'待校验':'校验失败',p.status==='valid'?'ok':p.status==='pending'?'warn':'error')}</span></span>${icon('arrow')}</button>`).join(''):'<div class="m-empty-compact"><p>没有匹配的配置</p><button type="button" class="m-text-button" data-m-action="clear-search">清除搜索</button></div>';
+    }
+    function mobileSettings(){
+      return `<section class="m-section"><h2>外观</h2><div class="field m-setting"><label for="m-theme">主题</label><select id="m-theme">${[['system','跟随系统'],['light','浅色'],['dark','深色']].map(([v,n])=>`<option value="${v}" ${state.theme===v?'selected':''}>${n}</option>`).join('')}</select></div></section><section class="m-section"><h2>桌面连接</h2><div class="m-setting od-field"><strong>家庭实验室桌面</strong><span class="m-meta">${online()?'控制端可达 · 示例状态':'尚未连接桌面'}</span></div><dl class="m-facts"><div><dt>代理进程</dt><dd class="mono">Xray · ${stateLabel()}</dd></div><div><dt>配置归属</dt><dd>存放在桌面</dd></div></dl><button type="button" class="m-text-button" data-m-view="connect">查看桌面状态 ${icon('arrow')}</button></section><section class="m-section"><h2>控制范围</h2><p class="m-caption">此原型展示状态查看、启停与路由检查。配置以只读呈现。</p><p class="m-meta">实际配对、认证以及远端只读或全量控制权限，随实现立项另定。</p></section><section class="m-section"><h2>隐私</h2><div class="m-setting od-row"><div class="od-field od-fill"><strong id="m-redact-label">诊断目标脱敏</strong><span class="m-meta">沿用桌面偏好，不传输真实配置。</span></div><button type="button" class="switch" role="switch" aria-checked="${state.redact}" aria-labelledby="m-redact-label" data-m-action="redact">${state.redact?'已开启':'已关闭'}${icon(state.redact?'check':'close')}</button></div></section>`;
+    }
+    function draw(){root.innerHTML=frame(({connect:mobileOverview,trace:mobileTrace,profiles:mobileProfiles,settings:mobileSettings})[state.view]());}
+    function connect(){
+      if(working())return;const request=++m.request;m.desktop='connecting';m.error='';draw();
+      setTimeout(()=>{if(request!==m.request)return;m.desktop='online';m.proxy='stopped';draw();$('[data-m-action="control"]',root)?.focus();},700);
+    }
+    function performControl(){
+      if(!online()||working())return;
+      const stop=m.proxy==='running';
+      openDialog(stop?'停止桌面代理？':'启动桌面代理？',stop?'停止后保留桌面配置。':'先校验桌面配置，再启动 Xray。',`<p class="mono">${esc(active().name)}</p><p class="m-meta">原型模拟控制请求，不操作真实桌面。</p><div class="dialog-actions"><button type="button" class="btn" data-m-action="cancel">取消</button><button type="button" class="btn primary" data-m-action="confirm-control">${stop?'确认停止':'确认启动'}</button></div>`);
+    }
+    function finishControl(stop,request){
+      if(request!==m.request||!online())return;
+      if(!stop){const errors=validateRules(active().rules);if(errors.length){active().status='invalid';active().errors=errors;m.proxy='stopped';m.error='配置校验失败，代理尚未启动。';draw();return;}}
+      m.proxy=stop?'stopped':'running';m.error='';draw();$('[data-m-action="control"]',root)?.focus();
+    }
+    function inspectMobile(){
+      if(!online()||m.proxy==='unreachable'||m.checking)return;
+      const input=$('#m-target',root);const value=input.value.trim().toLowerCase();m.input=value;
+      if(!validDomain(value)){const error=$('#m-target-error',root);error.textContent='请输入域名，不要包含协议、路径或空格。';error.hidden=false;input.setAttribute('aria-invalid','true');input.focus();return;}
+      m.checking=true;draw();
+      setTimeout(()=>{
+        m.checking=false;state.target=value;const r=getRoute(value);
+        const record={target:value,matchedKind:r.matchedKind,policy:r.policy,exit:r.exit,source:r.source,index:r.index,profile:active().name,traceId:traceId(),time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})};
+        m.result=record;m.records=[record,...m.records.filter(r=>r.target!==value)].slice(0,8);draw();$('#m-target',root)?.focus();
+      },450);
+    }
+    root.addEventListener('click',e=>{
+      const record=e.target.closest('[data-m-record]');
+      const profile=e.target.closest('[data-m-profile]');
+      const view=e.target.closest('[data-m-view]');
+      if(record){const r=m.records[Number(record.dataset.mRecord)];m.result=r;m.input=r.target;draw();$('#m-target',root)?.focus();return;}
+      if(profile){navigate('profiles',profile.dataset.mProfile);return;}
+      if(view){e.preventDefault();navigate(view.dataset.mView);return;}
+    });
+    document.addEventListener('click',e=>{
+      if(e.target.closest('[data-action="close-modal"]')){closeDialog();return;}
+      const b=e.target.closest('[data-m-action]');if(!b||b.disabled)return;
+      switch(b.dataset.mAction){
+        case 'back':back();break;
+        case 'reconnect':connect();break;
+        case 'control':performControl();break;
+        case 'cancel':closeDialog();break;
+        case 'confirm-control':{
+          const stop=m.proxy==='running';closeDialog();m.proxy=stop?'stopping':'starting';const request=++m.request;draw();setTimeout(()=>finishControl(stop,request),800);break;
+        }
+        case 'refresh-process':if(m.readingProcess)return;m.readingProcess=true;m.error='正在重新读取进程状态…';draw();setTimeout(()=>{m.readingProcess=false;m.proxy='stopped';m.error='';draw();},650);break;
+        case 'inspect':inspectMobile();break;
+        case 'redact':state.redact=!state.redact;storePreferences();draw();$('[data-m-action="redact"]',root)?.focus();break;
+        case 'clear-search':m.query='';draw();$('#m-profile-search',root)?.focus();break;
+      }
+    });
+    document.addEventListener('input',e=>{if(e.target.id==='m-target')m.input=e.target.value;if(e.target.id==='m-profile-search'){m.query=e.target.value;$('#m-profile-list',root).innerHTML=profileList();}});
+    document.addEventListener('change',e=>{if(e.target.id==='m-theme'){state.theme=e.target.value;setTheme();storePreferences();}});
+    document.addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Enter'&&e.target.id==='m-target'){e.preventDefault();inspectMobile();}});
+    modal.addEventListener('close',()=>{if(!document.activeElement||document.activeElement===document.body)$('[data-m-action="control"]',root)?.focus();});
+    draw();
+    if(['starting','stopping'].includes(scenario)){const request=++m.request;setTimeout(()=>finishControl(scenario==='stopping',request),1800);}
+  }
+  function initDirectory(){
+    const select=document.getElementById('directory-theme');
+    if(select){select.value=state.theme;select.addEventListener('change',()=>{state.theme=select.value;setTheme();storePreferences();});}
+  }
+
+  if(surface==='mobile')initMobile();else if(surface==='directory')initDirectory();else render();
 })();
