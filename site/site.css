@@ -320,3 +320,8 @@ html:lang(en) .lang-zh { display: none !important; }
 /* ---------- Icon visibility per theme ---------- */
 html[data-theme="light"] .kit-icon-moon { display: none; }
 html[data-theme="dark"] .kit-icon-sun { display: none; }
+
+/* The install command block is centered; without a cap its nowrap command
+   line overflows both sides on small screens. The command scrolls inside. */
+.install-block { max-width: 100%; }
+.install-cmd { max-width: 100%; }
