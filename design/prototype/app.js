@@ -132,10 +132,10 @@
   function render() { root.innerHTML=shell(({connect:overview,trace:inspector,profiles:library,settings})[state.view]()); }
   let modalReturn=null;
   function openDialog(title,description,body) {
-    modalReturn=document.activeElement;
+    if(!modal.open)modalReturn=document.activeElement;
     modal.innerHTML=`<div class="dialog-header"><div><h2 id="dialog-title">${title}</h2><p>${description}</p></div><button type="button" class="btn subtle close-button" data-action="close-modal" aria-label="关闭对话框">${icon('close')}</button></div><div class="dialog-body">${body}</div>`;
     if(!modal.open)modal.showModal();
-    const first=$('input:not([type=checkbox]),textarea,select,button',modal); if(first)first.focus();
+    const first=$('input:not([type=checkbox]),textarea,select',modal)||$('.dialog-actions [data-action="close-modal"]',modal)||$('button',modal); if(first)first.focus();
   }
   function closeDialog() { if(modal.open)modal.close(); }
   modal.addEventListener('close',()=>{ const fallback=$(`[data-view="${state.view}"]`,root); (modalReturn?.isConnected?modalReturn:fallback)?.focus(); });
@@ -332,7 +332,7 @@
     if(e.target.id==='expected-policy'){const value=e.target.value;if(value)state.expected[state.target]=value;else delete state.expected[state.target];render();$('#expected-policy',root)?.focus();}
   });
   document.addEventListener('keydown',e=>{
-    if(surface!=='desktop')return;
+    if(surface!=='desktop'||e.isComposing||e.repeat)return;
     if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!modal.open)commands();return;}
     if(modal.open&&$('#command-search',modal)){
       const buttons=Array.from(modal.querySelectorAll('.command-item'));
@@ -340,7 +340,8 @@
       if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();if(buttons.length){const next=index<0?(e.key==='ArrowDown'?0:buttons.length-1):(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[next].focus();}return;}
       if(e.key==='Enter'&&e.target.id==='command-search'){e.preventDefault();buttons[0]?.click();return;}
     }
-    const editable=e.target.matches('input,textarea,select,[contenteditable="true"]');
+    if(modal.open)return;
+    const editable=e.target.closest('input,textarea,select,[contenteditable]');
     if(e.key==='/'&&!editable&&!modal.open&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(state.view==='trace')$('#target',root)?.focus();else{if(state.view!=='profiles')go('profiles',false);$('#profile-search',root)?.focus();}return;}
     if(e.key==='Enter'&&e.target.id==='target'){e.preventDefault();if(!state.inspecting)inspect();}
   });
@@ -456,7 +457,7 @@
     });
     document.addEventListener('input',e=>{if(e.target.id==='m-target')m.input=e.target.value;if(e.target.id==='m-profile-search'){m.query=e.target.value;$('#m-profile-list',root).innerHTML=profileList();}});
     document.addEventListener('change',e=>{if(e.target.id==='m-theme'){state.theme=e.target.value;setTheme();storePreferences();}});
-    document.addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Enter'&&e.target.id==='m-target'){e.preventDefault();inspectMobile();}});
+    document.addEventListener('keydown',e=>{if(e.isComposing||e.repeat)return;if(e.key==='Enter'&&e.target.id==='m-target'){e.preventDefault();inspectMobile();}});
     modal.addEventListener('close',()=>{if(!document.activeElement||document.activeElement===document.body)$('[data-m-action="control"]',root)?.focus();});
     draw();
     if(['starting','stopping'].includes(scenario)){const request=++m.request;setTimeout(()=>finishControl(scenario==='stopping',request),1800);}
