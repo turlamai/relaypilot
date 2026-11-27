@@ -6,13 +6,11 @@ name: Release
 #     Linux packages, and publishes them as a GitHub Release with SHA256SUMS
 #     and build-provenance attestations. Fails closed before any expensive
 #     build when the macOS signing secrets are missing.
-#   - workflow_dispatch: a rehearsal. Same builds (macOS ad-hoc signed),
-#     artifacts only, nothing is published. Use it to try the installers
-#     before tagging.
+#   - workflow_dispatch on a branch: rehearsal artifacts only.
+#   - workflow_dispatch on a v* tag: the same production path as tag push.
 #
 # Differences from the family baseline (booklight release.yml), on record:
-#   - No signed update manifest: RelayPilot has no update mechanism
-#     (docs/distribution.md, ROADMAP M2 reserves the slot).
+#   - Signed Ed25519 update manifest required for tag releases.
 #   - No Flatpak bundle yet: it needs a flatpak/ manifest and an app icon,
 #     neither of which exists.
 #   - No app icon: installers carry the glaze default until design/ owns one.
