@@ -251,11 +251,12 @@
     return {kind:'relaypilot-prototype-diagnostic',simulation:true,networkCaptured:false,target:state.redact?'[redacted]':state.target,matchedRule:r.rule?{type:r.rule.type,policy:r.policy,...(state.redact?{}:{value:r.rule.value})}:null,result:r.exit,revision:state.revision,...(state.redact?{}:{trace_id:traceId()})};
   }
   function inspect() {
+    if(state.inspecting)return;
     const input=$('#target',root); const value=input.value.trim().toLowerCase(); state.input=value;
     const error=$('#target-error',root);
     if(!validDomain(value)){error.textContent='请输入域名，例如 nas.lab.internal；不要包含协议、路径或空格。';error.hidden=false;input.setAttribute('aria-invalid','true');input.focus();return;}
     state.target=value;state.inspecting=true;render();
-    const token=++state.inspectionToken;setTimeout(()=>{if(token!==state.inspectionToken)return;state.inspecting=false;render();$('#target',root)?.focus();},450);
+    const token=++state.inspectionToken;setTimeout(()=>{if(token!==state.inspectionToken)return;state.inspecting=false;if(state.view==='trace'){const focused=root.contains(document.activeElement)||document.activeElement===document.body;render();if(focused&&!modal.open)$('#target',root)?.focus({preventScroll:true});}},450);
   }
   async function handle(action) {
     if(action==='dismiss'){toast.hidden=true;return;}
